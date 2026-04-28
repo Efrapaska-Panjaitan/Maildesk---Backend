@@ -14,6 +14,42 @@ public class SuratMasukService
         _db = db;
     }
 
+    public async Task<SuratMasukItemDto> CreateAsync(CreateSuratMasukDto request)
+{
+    var entity = new SuratMasuk
+    {
+        NomorAgenda = request.NomorAgenda,
+        NomorSurat = request.NomorSurat,
+        TanggalSurat = request.TanggalSurat,
+        TanggalDiterima = request.TanggalDiterima,
+        NamaPengirim = request.NamaPengirim,
+        InstansiPengirim = request.InstansiPengirim,
+        Perihal = request.Perihal,
+        Deskripsi = request.Deskripsi,
+        KodeKlasifikasi = request.KodeKlasifikasi,
+        JenisSumber = request.JenisSumber,
+        TingkatPrioritas = request.TingkatPrioritas,
+        Status = request.Status,
+        DibuatPada = DateTime.UtcNow
+    };
+
+    _db.SuratMasuk.Add(entity);
+    await _db.SaveChangesAsync();
+
+    return new SuratMasukItemDto
+    {
+        Id = entity.Id,
+        NomorAgenda = entity.NomorAgenda,
+        NomorSurat = entity.NomorSurat,
+        TanggalSurat = entity.TanggalSurat,
+        TanggalDiterima = entity.TanggalDiterima,
+        NamaPengirim = entity.NamaPengirim,
+        InstansiPengirim = entity.InstansiPengirim,
+        Perihal = entity.Perihal,
+        JenisSumber = entity.JenisSumber,
+        Status = entity.Status
+    };
+}
     public async Task<PagedResponseDto<SuratMasukItemDto>> GetAllAsync(SuratMasukQueryDto request)
     {
         ValidateSort(request);

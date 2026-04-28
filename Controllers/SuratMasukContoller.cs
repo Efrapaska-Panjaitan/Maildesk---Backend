@@ -31,4 +31,12 @@ public class SuratMasukController : ControllerBase
             });
         }
     }
+
+    [HttpPost]
+    public async Task<IActionResult> Create([FromBody] CreateSuratMasukDto request)
+    {
+         var result = await _service.CreateAsync(request);
+
+          return CreatedAtAction(nameof(GetAll), new { id = result.Id }, result);
+    }
 }
