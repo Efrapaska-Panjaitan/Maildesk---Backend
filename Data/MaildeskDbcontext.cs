@@ -32,6 +32,11 @@ public class MaildeskDbContext : DbContext
             entity.Property(x => x.TingkatPrioritas).HasColumnName("tingkat_prioritas");
             entity.Property(x => x.Status).HasColumnName("status");
             entity.Property(x => x.DibuatPada).HasColumnName("dibuat_pada");
+            entity.HasIndex(x => x.NomorAgenda);
+            entity.HasIndex(x => x.TanggalDiterima);
+            entity.HasIndex(x => new { x.TanggalDiterima, x.NomorAgenda });
+            entity.HasIndex(x => x.Status);
+            entity.HasIndex(x => x.JenisSumber);
         });
     }
 }

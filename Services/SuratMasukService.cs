@@ -81,21 +81,22 @@ public class SuratMasukService
         };
     }
 
-    private static IQueryable<SuratMasuk> ApplySorting(IQueryable<SuratMasuk> query, string sortBy, string sortDirection)
+   private static IQueryable<SuratMasuk> ApplySorting(IQueryable<SuratMasuk> query, string sortBy, string sortDirection)
+{
+    var isAsc = sortDirection.ToLower() == "asc";
+
+    return sortBy.ToLower() switch
     {
-        var isAsc = sortDirection.ToLower() == "asc";
-
-        return sortBy.ToLower() switch
-        {
-            "nomor_agenda" => isAsc ? query.OrderBy(x => x.NomorAgenda) : query.OrderByDescending(x => x.NomorAgenda),
-            "nomor_surat" => isAsc ? query.OrderBy(x => x.NomorSurat) : query.OrderByDescending(x => x.NomorSurat),
-            "tanggal_surat" => isAsc ? query.OrderBy(x => x.TanggalSurat) : query.OrderByDescending(x => x.TanggalSurat),
-            "nama_pengirim" => isAsc ? query.OrderBy(x => x.NamaPengirim) : query.OrderByDescending(x => x.NamaPengirim),
-            "status" => isAsc ? query.OrderBy(x => x.Status) : query.OrderByDescending(x => x.Status),
-            _ => isAsc ? query.OrderBy(x => x.TanggalDiterima) : query.OrderByDescending(x => x.TanggalDiterima)
-        };
-    }
-
+        "nomor_agenda" => isAsc ? query.OrderBy(x => x.NomorAgenda) : query.OrderByDescending(x => x.NomorAgenda),
+        "nomor_surat" => isAsc ? query.OrderBy(x => x.NomorSurat) : query.OrderByDescending(x => x.NomorSurat),
+        "tanggal_surat" => isAsc ? query.OrderBy(x => x.TanggalSurat) : query.OrderByDescending(x => x.TanggalSurat),
+        "tanggal_diterima" => isAsc ? query.OrderBy(x => x.TanggalDiterima) : query.OrderByDescending(x => x.TanggalDiterima),
+        "nama_pengirim" => isAsc ? query.OrderBy(x => x.NamaPengirim) : query.OrderByDescending(x => x.NamaPengirim),
+        "status" => isAsc ? query.OrderBy(x => x.Status) : query.OrderByDescending(x => x.Status),
+        "jenis_sumber" => isAsc ? query.OrderBy(x => x.JenisSumber) : query.OrderByDescending(x => x.JenisSumber),
+        _ => isAsc ? query.OrderBy(x => x.TanggalDiterima) : query.OrderByDescending(x => x.TanggalDiterima)
+    };
+}
     private static void ValidateSort(SuratMasukQueryDto request)
     {
         var allowedSortBy = new[]
@@ -105,7 +106,8 @@ public class SuratMasukService
             "nomor_surat",
             "tanggal_surat",
             "nama_pengirim",
-            "status"
+            "status",
+            "jenis_sumber"
         };
 
         if (!allowedSortBy.Contains(request.SortBy.ToLower()))
