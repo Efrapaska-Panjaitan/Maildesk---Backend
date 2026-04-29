@@ -3,6 +3,7 @@ using System;
 using Maildesk.Api.Data;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 
@@ -11,9 +12,11 @@ using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 namespace Maildesk.Api.Migrations
 {
     [DbContext(typeof(MaildeskDbContext))]
-    partial class MaildeskDbContextModelSnapshot : ModelSnapshot
+    [Migration("20260428130900_AddSuratKeluarSearch")]
+    partial class AddSuratKeluarSearch
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -31,33 +34,35 @@ namespace Maildesk.Api.Migrations
 
                     NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<long>("Id"));
 
-                    b.Property<long>("DibuatOleh")
-                        .HasColumnType("bigint")
+                    b.Property<string>("Deskripsi")
+                        .HasColumnType("text")
+                        .HasColumnName("deskripsi");
+
+                    b.Property<string>("DibuatOleh")
+                        .IsRequired()
+                        .HasColumnType("text")
                         .HasColumnName("dibuat_oleh");
 
                     b.Property<DateTime>("DibuatPada")
                         .HasColumnType("timestamp with time zone")
                         .HasColumnName("dibuat_pada");
 
-                    b.Property<long?>("DiperbaruiOleh")
-                        .HasColumnType("bigint")
-                        .HasColumnName("diperbarui_oleh");
-
-                    b.Property<DateTime>("DiperbaruiPada")
-                        .HasColumnType("timestamp with time zone")
-                        .HasColumnName("diperbarui_pada");
-
-                    b.Property<string>("InstansiTujuan")
+                    b.Property<string>("InstansiPenerima")
                         .HasColumnType("text")
-                        .HasColumnName("instansi_tujuan");
+                        .HasColumnName("instansi_penerima");
 
-                    b.Property<string>("IsiRingkas")
+                    b.Property<string>("JenisSumber")
                         .HasColumnType("text")
-                        .HasColumnName("isi_ringkas");
+                        .HasColumnName("jenis_sumber");
 
                     b.Property<string>("KodeKlasifikasi")
                         .HasColumnType("text")
                         .HasColumnName("kode_klasifikasi");
+
+                    b.Property<string>("NamaPenerima")
+                        .IsRequired()
+                        .HasColumnType("text")
+                        .HasColumnName("nama_penerima");
 
                     b.Property<string>("NomorAgenda")
                         .IsRequired()
@@ -65,7 +70,6 @@ namespace Maildesk.Api.Migrations
                         .HasColumnName("nomor_agenda");
 
                     b.Property<string>("NomorSurat")
-                        .IsRequired()
                         .HasColumnType("text")
                         .HasColumnName("nomor_surat");
 
@@ -79,7 +83,11 @@ namespace Maildesk.Api.Migrations
                         .HasColumnType("text")
                         .HasColumnName("status");
 
-                    b.Property<DateOnly>("TanggalSurat")
+                    b.Property<DateOnly>("TanggalKeluar")
+                        .HasColumnType("date")
+                        .HasColumnName("tanggal_keluar");
+
+                    b.Property<DateOnly?>("TanggalSurat")
                         .HasColumnType("date")
                         .HasColumnName("tanggal_surat");
 
@@ -88,12 +96,9 @@ namespace Maildesk.Api.Migrations
                         .HasColumnType("text")
                         .HasColumnName("tingkat_prioritas");
 
-                    b.Property<string>("TujuanSurat")
-                        .IsRequired()
-                        .HasColumnType("text")
-                        .HasColumnName("tujuan_surat");
-
                     b.HasKey("Id");
+
+                    b.HasIndex("JenisSumber");
 
                     b.HasIndex("NomorAgenda");
 
@@ -101,11 +106,9 @@ namespace Maildesk.Api.Migrations
 
                     b.HasIndex("Status");
 
-                    b.HasIndex("TanggalSurat");
+                    b.HasIndex("TanggalKeluar");
 
-                    b.HasIndex("TujuanSurat");
-
-                    b.HasIndex("TanggalSurat", "NomorAgenda");
+                    b.HasIndex("TanggalKeluar", "NomorAgenda");
 
                     b.ToTable("surat_keluar", (string)null);
                 });
