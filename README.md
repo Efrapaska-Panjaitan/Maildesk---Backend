@@ -1,605 +1,262 @@
-# 📮 MailDesk Backend — API Persuratan Digital
+# Maildesk API
 
-## 📌 Informasi Produk
+Maildesk API adalah backend untuk sistem pengelolaan surat yang dibuat menggunakan ASP.NET Core Web API, Entity Framework Core, dan PostgreSQL. Project ini digunakan untuk mengelola data surat masuk dan surat keluar, termasuk fitur pencarian, filter, sorting, pagination, validasi request, serta optimasi query database menggunakan indexing.
 
-| Aspek | Detail |
-|-------|--------|
-| **Framework** | ASP.NET Core 8.0 Web API |
-| **Database** | PostgreSQL 16 |
-| **Containerization** | Docker + Docker Compose |
-| **API Documentation** | Swagger / OpenAPI 3.0 |
-| **Port** | `5000` (Docker) · `5281` (lokal) |
+## Teknologi
 
----
+- ASP.NET Core Web API
+- Entity Framework Core
+- PostgreSQL
+- Swagger UI
 
-## 🚀 Cara Menjalankan
+## Menjalankan Project
 
-### Dengan Docker (Recommended)
+Jalankan project dari folder `Maildesk.Api`:
 
 ```bash
-# Clone repository
-git clone https://github.com/pens-pbl/maildesk-backend.git
-cd maildesk-backend
-
-# Jalankan
-docker compose up --build
-
-# Akses Swagger
-http://localhost:5000/swagger
-```
-
-### Tanpa Docker (Development Lokal)
-
-```bash
-cd MailDesk.API
 dotnet run
 
-# Swagger: http://localhost:5281/swagger
-```
+Swagger dapat diakses melalui:
 
----
+http://localhost:5175/swagger/index.html
+Fitur yang Sudah Dibuat
 
-## 📁 Struktur Folder
+Fitur yang sudah dibuat saat ini adalah pencarian data surat masuk dan surat keluar melalui endpoint GET. Kedua fitur ini memiliki pola yang sama, yaitu mendukung filter data, sorting, pagination, response metadata, validasi request, dan indexing database untuk optimasi pencarian.
 
-```
-MailDesk/
-├── MailDesk.API/
-│   ├── Controllers/
-│   │   └── SuratController.cs
-│   ├── Services/
-│   │   ├── Interfaces/
-│   │   │   └── ISuratService.cs
-│   │   └── SuratService.cs
-│   ├── Entities/
-│   │   ├── Surat.cs
-│   │   ├── User.cs
-│   │   ├── Role.cs
-│   │   ├── Disposisi.cs
-│   │   ├── DisposisiRelation.cs
-│   │   ├── Inbox.cs
-│   │   └── TemplateSurat.cs
-│   ├── DTOs/
-│   │   └── Surat/
-│   │       ├── CreateSuratRequest.cs
-│   │       ├── SuratResponse.cs
-│   │       ├── SuratListResponse.cs
-│   │       ├── SuratQueryParams.cs
-│   │       ├── PaginatedResponse.cs
-│   │       ├── UploadPdfResponse.cs
-│   │       └── NomorAgendaPreviewResponse.cs
-│   ├── Data/
-│   │   └── AppDbContext.cs
-│   ├── Helpers/
-│   │   ├── NomorAgendaHelper.cs
-│   │   └── SwaggerFileOperationFilter.cs
-│   └── Program.cs
-├── docker/
-│   └── postgres/
-│       ├── init.sql
-│       └── seed.sql
-├── docker-compose.yml
-├── .env.example
-├── .gitignore
-└── README.md
-```
+Pencarian Surat Masuk
 
----
+Fitur pencarian surat masuk digunakan untuk mengambil daftar data surat masuk dari database melalui endpoint:
 
-## 🗄️ Database Schema
+GET /api/surat-masuk
 
-Tabel utama yang digunakan pada Sprint 1:
+Endpoint ini mendukung pencarian berdasarkan:
 
-```
-roles             → Data peran pengguna
-users             → Data pengguna dengan email & password
-surat             → Gabungan surat masuk dan surat keluar
-disposisi         → Data disposisi surat
-disposisi_relation → Relasi rantai disposisi (parent-child)
-inbox             → Data penerimaan & forwarding surat
-template_surat    → Template surat yang tersedia
-```
+nomor agenda
+nomor surat
+nama pengirim
+perihal
+status
+jenis sumber
+rentang tanggal diterima
+Query Parameter Surat Masuk
+Parameter	Keterangan
+nomorAgenda	Mencari surat masuk berdasarkan nomor agenda
+nomorSurat	Mencari surat masuk berdasarkan nomor surat
+namaPengirim	Mencari surat masuk berdasarkan nama pengirim
+perihal	Mencari surat masuk berdasarkan perihal
+status	Mencari surat masuk berdasarkan status
+jenisSumber	Mencari surat masuk berdasarkan jenis sumber
+tanggalDiterimaDari	Filter tanggal diterima dari tanggal tertentu
+tanggalDiterimaSampai	Filter tanggal diterima sampai tanggal tertentu
+sortBy	Field yang digunakan untuk sorting
+sortDirection	Arah sorting, yaitu asc atau desc
+page	Nomor halaman
+pageSize	Jumlah data per halaman
+Sorting Surat Masuk
 
-### Tabel `surat` (Tabel Utama)
+Field sortBy yang tersedia:
 
-| Kolom | Tipe | Keterangan |
-|-------|------|------------|
-| `id` | SERIAL | Primary key |
-| `no_surat` | VARCHAR(100) | Nomor surat resmi |
-| `nomor_agenda` | VARCHAR(100) | Nomor agenda otomatis |
-| `jenis_surat` | VARCHAR(20) | `Masuk` atau `Keluar` |
-| `kategori_surat` | VARCHAR(50) | Undangan, Edaran, dll |
-| `tanggal_surat` | DATE | Tanggal tertera di surat |
-| `pengirim` | VARCHAR(150) | Nama instansi / pengirim |
-| `penerima` | VARCHAR(150) | Nama penerima |
-| `perihal` | TEXT | Perihal surat |
-| `isi_teks_ocr` | TEXT | Teks hasil scan OCR |
-| `nama_file` | VARCHAR(255) | Nama file PDF yang diupload |
-| `status` | VARCHAR(20) | `Baru` / `Diproses` / `Selesai` |
-| `is_archived` | BOOLEAN | Status arsip |
-| `user_id` | INTEGER | FK → users.id (pencatat) |
-| `created_at` | TIMESTAMP | Waktu pencatatan |
+Nilai	Keterangan
+tanggal_diterima	Sorting berdasarkan tanggal diterima
+nomor_agenda	Sorting berdasarkan nomor agenda
+nomor_surat	Sorting berdasarkan nomor surat
+tanggal_surat	Sorting berdasarkan tanggal surat
+nama_pengirim	Sorting berdasarkan nama pengirim
+status	Sorting berdasarkan status
+jenis_sumber	Sorting berdasarkan jenis sumber
 
-### Format Nomor Agenda
+Contoh request:
 
-```
-SM/YYYY/MM/XXX
+GET /api/surat-masuk?page=1&pageSize=10&sortBy=tanggal_diterima&sortDirection=desc
+GET /api/surat-masuk?nomorSurat=001&page=1&pageSize=10
+GET /api/surat-masuk?tanggalDiterimaDari=2026-04-01&tanggalDiterimaSampai=2026-04-30&page=1&pageSize=10
+Optimasi Surat Masuk
 
-Contoh: SM/2026/05/001
-        SM/2026/05/002
-```
+Untuk optimasi pencarian, tabel surat_masuk ditambahkan index pada:
 
----
+nomor_agenda
+tanggal_diterima
+kombinasi tanggal_diterima dan nomor_agenda
+status
+jenis_sumber
+Pencarian Surat Keluar
 
-## 📡 API Endpoints
+Fitur pencarian surat keluar digunakan untuk mengambil daftar data surat keluar dari database melalui endpoint:
 
-### ── Task 1: Pencatatan Surat Masuk ──────────────────────────
+GET /api/surat-keluar
 
-#### `POST /api/surat`
+Endpoint ini dibuat dengan pola yang sama seperti surat masuk, tetapi menyesuaikan struktur asli tabel surat_keluar pada database PostgreSQL.
 
-Mencatat surat masuk baru beserta metadata ke database.
+Endpoint ini mendukung pencarian berdasarkan:
 
-**Request Body** (`application/json`):
+nomor agenda
+nomor surat
+tujuan surat
+instansi tujuan
+perihal
+status
+rentang tanggal surat
+Query Parameter Surat Keluar
+Parameter	Keterangan
+nomorAgenda	Mencari surat keluar berdasarkan nomor agenda
+nomorSurat	Mencari surat keluar berdasarkan nomor surat
+tujuanSurat	Mencari surat keluar berdasarkan tujuan surat
+instansiTujuan	Mencari surat keluar berdasarkan instansi tujuan
+perihal	Mencari surat keluar berdasarkan perihal
+status	Mencari surat keluar berdasarkan status
+tanggalSuratDari	Filter tanggal surat dari tanggal tertentu
+tanggalSuratSampai	Filter tanggal surat sampai tanggal tertentu
+sortBy	Field yang digunakan untuk sorting
+sortDirection	Arah sorting, yaitu asc atau desc
+page	Nomor halaman
+pageSize	Jumlah data per halaman
+Sorting Surat Keluar
 
-```json
+Field sortBy yang tersedia:
+
+Nilai	Keterangan
+tanggal_surat	Sorting berdasarkan tanggal surat
+nomor_agenda	Sorting berdasarkan nomor agenda
+nomor_surat	Sorting berdasarkan nomor surat
+tujuan_surat	Sorting berdasarkan tujuan surat
+instansi_tujuan	Sorting berdasarkan instansi tujuan
+perihal	Sorting berdasarkan perihal
+status	Sorting berdasarkan status surat
+
+Contoh request:
+
+GET /api/surat-keluar?page=1&pageSize=10&sortBy=tanggal_surat&sortDirection=desc
+GET /api/surat-keluar?nomorAgenda=AGD&page=1&pageSize=10
+GET /api/surat-keluar?tujuanSurat=Akmal&page=1&pageSize=10
+GET /api/surat-keluar?tanggalSuratDari=2026-04-01&tanggalSuratSampai=2026-04-30&page=1&pageSize=10
+Struktur Tabel Surat Keluar
+
+Struktur tabel surat_keluar yang digunakan:
+
+id
+nomor_agenda
+nomor_surat
+tanggal_surat
+tujuan_surat
+instansi_tujuan
+perihal
+isi_ringkas
+kode_klasifikasi
+tingkat_prioritas
+status
+dibuat_oleh
+diperbarui_oleh
+dibuat_pada
+diperbarui_pada
+
+Kolom nomor_agenda ditambahkan melalui migration agar fitur pencarian surat keluar dapat disamakan dengan pola pencarian surat masuk.
+
+Optimasi Surat Keluar
+
+Untuk optimasi pencarian, tabel surat_keluar ditambahkan index pada:
+
+nomor_agenda
+nomor_surat
+tanggal_surat
+kombinasi tanggal_surat dan nomor_agenda
+status
+tujuan_surat
+Format Response
+
+Endpoint pencarian surat masuk dan surat keluar menggunakan format response pagination dengan properti data dan meta.
+
+Contoh response:
+
 {
-  "noSurat": "421.3/B.1/DISDIK/2026",
-  "tanggalSurat": "2026-05-01",
-  "pengirim": "Dinas Pendidikan Kab. Bogor",
-  "penerima": "Sekretaris",
-  "perihal": "Undangan Workshop Digitalisasi",
-  "kategoriSurat": "Undangan",
-  "userId": 2,
-  "nomorAgendaPreview": "SM/2026/05/001"
-}
-```
-
-| Field | Tipe | Wajib | Keterangan |
-|-------|------|-------|------------|
-| `noSurat` | string | ✅ | Nomor surat resmi |
-| `tanggalSurat` | date | ✅ | Format `YYYY-MM-DD` |
-| `pengirim` | string | ✅ | Nama instansi pengirim |
-| `penerima` | string | ✅ | Nama penerima |
-| `perihal` | string | ✅ | Perihal / subject surat |
-| `kategoriSurat` | string | ❌ | Undangan, Edaran, dll |
-| `userId` | integer | ✅ | ID user yang mencatat |
-| `nomorAgendaPreview` | string | ❌ | Nomor dari endpoint preview |
-
-**Response `201 Created`**:
-
-```json
-{
-  "success": true,
-  "message": "Surat masuk berhasil dicatat.",
-  "data": {
-    "id": 1,
-    "noSurat": "421.3/B.1/DISDIK/2026",
-    "nomorAgenda": "SM/2026/05/001",
-    "jenisSurat": "Masuk",
-    "kategoriSurat": "Undangan",
-    "tanggalSurat": "2026-05-01",
-    "pengirim": "Dinas Pendidikan Kab. Bogor",
-    "penerima": "Sekretaris",
-    "perihal": "Undangan Workshop Digitalisasi",
-    "status": "Baru",
-    "hasLampiran": false,
-    "pencatatNama": "Sekretaris",
-    "createdAt": "2026-05-07T10:30:00Z"
-  }
-}
-```
-
-**Kemungkinan Error**:
-
-| HTTP Code | Pesan | Penyebab |
-|-----------|-------|----------|
-| `400` | Field wajib tidak diisi | Validasi gagal |
-| `400` | User tidak ditemukan | `userId` tidak valid |
-| `500` | Terjadi kesalahan pada server | Internal error |
-
----
-
-#### `GET /api/surat/nomor-agenda/preview`
-
-Dipanggil saat halaman Input Surat Masuk **pertama kali dibuka**.  
-Mengembalikan nomor agenda berikutnya sebagai preview sebelum disimpan.
-
-> ⚠️ Nomor preview bersifat sementara. Jika ada user lain yang menyimpan surat lebih dulu, nomor final akan di-generate ulang secara otomatis saat `POST /api/surat` dipanggil.
-
-**Response `200 OK`**:
-
-```json
-{
-  "success": true,
-  "data": {
-    "nomorAgenda": "SM/2026/05/003",
-    "keterangan": "Preview - nomor final dikonfirmasi saat simpan",
-    "generatedAt": "2026-05-07T16:00:00Z"
-  }
-}
-```
-
----
-
-### ── Task 2: Upload File PDF ──────────────────────────────────
-
-#### `POST /api/surat/{id}/upload-pdf`
-
-Upload file PDF lampiran untuk surat yang sudah tercatat.
-
-**Path Parameter**:
-
-| Parameter | Tipe | Keterangan |
-|-----------|------|------------|
-| `id` | integer | ID surat yang sudah dicatat |
-
-**Request** (`multipart/form-data`):
-
-| Field | Tipe | Keterangan |
-|-------|------|------------|
-| `file` | file | File PDF yang akan diupload |
-
-**Aturan Validasi File**:
-
-```
-✅ Format     : PDF only (.pdf)
-✅ Max Size   : 10 MB
-✅ MIME Type  : application/pdf
-```
-
-**Lokasi Penyimpanan File**:
-
-```
-Container : /app/wwwroot/uploads/surat/YYYY/MM/{guid}.pdf
-Akses URL : http://localhost:5000/uploads/surat/2026/05/{guid}.pdf
-```
-
-**Response `200 OK`**:
-
-```json
-{
-  "success": true,
-  "message": "File PDF berhasil diupload.",
-  "data": {
-    "suratId": 1,
-    "namaFile": "b3f4e1a2-9c8d-47b5-a1d0-2f3e4c5d6e7f.pdf",
-    "fileSizeBytes": 524288,
-    "fileSizeDisplay": "512 KB",
-    "uploadedAt": "2026-05-07T10:35:00Z"
-  }
-}
-```
-
-**Kemungkinan Error**:
-
-| HTTP Code | Pesan | Penyebab |
-|-----------|-------|----------|
-| `400` | Hanya file PDF yang diizinkan | Format bukan PDF |
-| `400` | Ukuran file melebihi 10MB | File terlalu besar |
-| `404` | Surat tidak ditemukan | ID tidak valid |
-| `500` | Terjadi kesalahan pada server | Internal error |
-
----
-
-### ── Task 3: Relasi Surat & Lampiran ─────────────────────────
-
-#### `GET /api/surat/{id}`
-
-Get detail surat beserta informasi lampiran PDF-nya.
-
-**Path Parameter**:
-
-| Parameter | Tipe | Keterangan |
-|-----------|------|------------|
-| `id` | integer | ID surat |
-
-**Response `200 OK`**:
-
-```json
-{
-  "success": true,
-  "data": {
-    "id": 1,
-    "noSurat": "421.3/B.1/DISDIK/2026",
-    "nomorAgenda": "SM/2026/05/001",
-    "jenisSurat": "Masuk",
-    "kategoriSurat": "Undangan",
-    "tanggalSurat": "2026-05-01",
-    "pengirim": "Dinas Pendidikan Kab. Bogor",
-    "penerima": "Sekretaris",
-    "perihal": "Undangan Workshop Digitalisasi",
-    "status": "Baru",
-    "isArchived": false,
-    "pencatatNama": "Sekretaris",
-    "namaFile": "b3f4e1a2-9c8d-47b5-a1d0-2f3e4c5d6e7f.pdf",
-    "hasLampiran": true,
-    "createdAt": "2026-05-07T10:30:00Z"
-  }
-}
-```
-
-**Kemungkinan Error**:
-
-| HTTP Code | Pesan | Penyebab |
-|-----------|-------|----------|
-| `404` | Surat tidak ditemukan | ID tidak valid |
-| `500` | Terjadi kesalahan pada server | Internal error |
-
----
-
-### ── Dashboard: Inbox (Semua Surat) ─────────────────────────
-
-#### `GET /api/surat`
-
-Mengambil semua surat (masuk + keluar) untuk halaman **Dashboard / Inbox**.  
-Mendukung pagination, sorting, filtering, dan pencarian.
-
-**Query Parameters**:
-
-| Parameter | Tipe | Default | Keterangan |
-|-----------|------|---------|------------|
-| `page` | integer | `1` | Nomor halaman |
-| `limit` | integer | `10` | Jumlah item per halaman (max: 100) |
-| `sortBy` | string | `tanggal` | `tanggal` · `nomor_agenda` · `pengirim` · `status` |
-| `sortOrder` | string | `desc` | `asc` · `desc` |
-| `search` | string | — | Cari di perihal / pengirim / no\_surat |
-| `status` | string | — | `Baru` · `Diproses` · `Selesai` |
-| `kategoriSurat` | string | — | Undangan, Edaran, dll |
-| `tanggalDari` | date | — | Filter dari tanggal (`YYYY-MM-DD`) |
-| `tanggalSampai` | date | — | Filter sampai tanggal (`YYYY-MM-DD`) |
-| `includeArchived` | boolean | `false` | Tampilkan surat yang sudah diarsip |
-
-**Contoh Request**:
-
-```
-GET /api/surat
-GET /api/surat?page=1&limit=10
-GET /api/surat?search=undangan
-GET /api/surat?status=Baru&sortBy=tanggal&sortOrder=desc
-GET /api/surat?tanggalDari=2026-05-01&tanggalSampai=2026-05-31
-GET /api/surat?kategoriSurat=Undangan&page=2&limit=5
-```
-
-**Response `200 OK`**:
-
-```json
-{
-  "success": true,
   "data": [
     {
       "id": 1,
-      "noSurat": "421.3/B.1/DISDIK/2026",
-      "nomorAgenda": "SM/2026/05/001",
-      "jenisSurat": "Masuk",
-      "kategoriSurat": "Undangan",
-      "tanggalSurat": "2026-05-01",
-      "pengirim": "Dinas Pendidikan Kab. Bogor",
-      "penerima": "Sekretaris",
-      "perihal": "Undangan Workshop Digitalisasi",
-      "status": "Baru",
-      "hasLampiran": false,
-      "createdAt": "2026-05-07T10:30:00Z"
-    },
-    {
-      "id": 2,
-      "noSurat": "B-500/PUPR/2026",
-      "nomorAgenda": "SM/2026/05/002",
-      "jenisSurat": "Masuk",
-      "kategoriSurat": null,
-      "tanggalSurat": "2026-05-02",
-      "pengirim": "Kementerian PUPR",
-      "penerima": "Sekretaris",
-      "perihal": "Rapat Koordinasi",
-      "status": "Baru",
-      "hasLampiran": true,
-      "createdAt": "2026-05-07T11:00:00Z"
+      "nomorAgenda": "AGD-001",
+      "nomorSurat": "001/MAIL/IV/2026",
+      "tanggalSurat": "2026-04-28",
+      "perihal": "Contoh Surat",
+      "status": "draft"
     }
   ],
   "meta": {
-    "currentPage": 1,
-    "totalPages": 3,
-    "totalData": 25,
-    "limit": 10,
-    "hasNextPage": true,
-    "hasPrevPage": false
+    "page": 1,
+    "pageSize": 10,
+    "totalData": 1,
+    "totalPage": 1,
+    "sortBy": "tanggal_surat",
+    "sortDirection": "desc"
   }
 }
-```
+Metadata Response
+Field	Keterangan
+page	Halaman yang sedang diakses
+pageSize	Jumlah data per halaman
+totalData	Total data yang sesuai filter
+totalPage	Total halaman berdasarkan jumlah data
+sortBy	Field sorting yang digunakan
+sortDirection	Arah sorting yang digunakan
+Validasi Request
 
----
+Validasi request diterapkan agar parameter pencarian tetap sesuai format dan tidak menyebabkan error pada sistem.
 
-### ── Page Surat Masuk ─────────────────────────────────────────
+Validasi yang diterapkan:
 
-#### `GET /api/surat/masuk`
+sortBy hanya boleh menggunakan field yang sudah didukung.
+sortDirection hanya boleh bernilai asc atau desc.
+Rentang tanggal tidak boleh terbalik.
+page dan pageSize digunakan untuk membatasi jumlah data yang dikembalikan.
 
-Mengambil hanya surat dengan `jenis_surat = 'Masuk'` untuk halaman **Surat Masuk**.  
-Mendukung query parameters yang sama dengan endpoint inbox.
+Contoh request tidak valid:
 
-**Contoh Request**:
+GET /api/surat-keluar?sortBy=random_field
 
-```
-GET /api/surat/masuk
-GET /api/surat/masuk?page=1&limit=10
-GET /api/surat/masuk?search=rapat
-GET /api/surat/masuk?status=Baru
-GET /api/surat/masuk?kategoriSurat=Undangan&sortOrder=asc
-```
+Contoh response:
 
-**Response `200 OK`**:
-
-```json
 {
-  "success": true,
-  "data": [
-    {
-      "id": 1,
-      "noSurat": "421.3/B.1/DISDIK/2026",
-      "nomorAgenda": "SM/2026/05/001",
-      "jenisSurat": "Masuk",
-      "kategoriSurat": "Undangan",
-      "tanggalSurat": "2026-05-01",
-      "pengirim": "Dinas Pendidikan Kab. Bogor",
-      "penerima": "Sekretaris",
-      "perihal": "Undangan Workshop Digitalisasi",
-      "status": "Baru",
-      "hasLampiran": false,
-      "createdAt": "2026-05-07T10:30:00Z"
-    }
-  ],
-  "meta": {
-    "currentPage": 1,
-    "totalPages": 2,
-    "totalData": 15,
-    "limit": 10,
-    "hasNextPage": true,
-    "hasPrevPage": false
-  }
+  "message": "sortBy tidak valid."
 }
-```
+File yang Berhubungan
 
----
+File utama yang berhubungan dengan fitur pencarian surat masuk dan surat keluar:
 
-### ── Page Surat Keluar ────────────────────────────────────────
+Controllers/SuratMasukController.cs
+Controllers/SuratKeluarController.cs
+Data/MaildeskDbcontext.cs
+Dtos/SuratMasukQueryDto.cs
+Dtos/SuratMasukItemDto.cs
+Dtos/SuratKeluarQueryDto.cs
+Dtos/SuratKeluarItemDto.cs
+Dtos/PagedResponseDto.cs
+Entities/SuratMasuk.cs
+Entities/SuratKeluar.cs
+Services/SuratMasukService.cs
+Services/SuratKeluarService.cs
+Migrations/...
+docs/pencarian-surat-masuk.md
+docs/pencarian-surat-keluar.md
+Dokumentasi Detail
 
-#### `GET /api/surat/keluar`
+Dokumentasi detail fitur tersedia di folder docs:
 
-Mengambil hanya surat dengan `jenis_surat = 'Keluar'` untuk halaman **Surat Keluar**.  
-Mendukung query parameters yang sama dengan endpoint inbox.
+docs/pencarian-surat-masuk.md
+docs/pencarian-surat-keluar.md
+Pengembangan Berikutnya
 
-**Contoh Request**:
+Pengembangan berikutnya adalah menambahkan fitur input data melalui endpoint:
 
-```
-GET /api/surat/keluar
-GET /api/surat/keluar?page=1&limit=10
-GET /api/surat/keluar?status=Selesai
-GET /api/surat/keluar?sortBy=pengirim&sortOrder=asc
-```
+POST /api/surat-masuk
+POST /api/surat-keluar
 
-**Response `200 OK`**:
+Fitur yang akan ditambahkan:
 
-```json
-{
-  "success": true,
-  "data": [
-    {
-      "id": 10,
-      "noSurat": "001/TU/MAILDESK/V/2026",
-      "nomorAgenda": "SK/2026/05/001",
-      "jenisSurat": "Keluar",
-      "kategoriSurat": "Edaran",
-      "tanggalSurat": "2026-05-05",
-      "pengirim": "Sekretaris",
-      "penerima": "Seluruh Divisi",
-      "perihal": "Edaran Libur Nasional",
-      "status": "Selesai",
-      "hasLampiran": false,
-      "createdAt": "2026-05-05T09:00:00Z"
-    }
-  ],
-  "meta": {
-    "currentPage": 1,
-    "totalPages": 1,
-    "totalData": 8,
-    "limit": 10,
-    "hasNextPage": false,
-    "hasPrevPage": false
-  }
-}
-```
+DTO untuk input surat
+method create pada service
+endpoint POST pada controller
+validasi field wajib
+testing input data melalui Swagger
+penyimpanan data ke database PostgreSQL
 
----
+Setelah paste, klik **Commit changes...** di GitHub. Pesan commit yang cocok:
 
-## 📊 Ringkasan Endpoint
-
-| Method | Endpoint | Kegunaan | Task |
-|--------|----------|----------|------|
-| `GET` | `/api/surat/nomor-agenda/preview` | Generate preview nomor agenda | Task 1 |
-| `POST` | `/api/surat` | Catat surat masuk baru | Task 1 |
-| `POST` | `/api/surat/{id}/upload-pdf` | Upload lampiran PDF | Task 2 |
-| `GET` | `/api/surat/{id}` | Detail surat + lampiran | Task 3 |
-| `GET` | `/api/surat` | Semua surat (Dashboard / Inbox) | Task 3 |
-| `GET` | `/api/surat/masuk` | Daftar surat masuk | Task 3 |
-| `GET` | `/api/surat/keluar` | Daftar surat keluar | Task 3 |
-
----
-
-## 🔗 Akses
-
-| Layanan | URL |
-|---------|-----|
-| **Swagger UI** | http://localhost:5000/swagger |
-| **API Base URL** | http://localhost:5000/api |
-| **PostgreSQL** | localhost:5432 |
-| **pgAdmin / DBeaver** | Host: `localhost` · Port: `5432` · DB: `maildesk_db` |
-
-**Database Credentials**:
-
-```
-Database : maildesknew_db
-Username : postgres
-Password : (password)
-```
-
----
-
-## 🐳 Docker Commands
-
-```bash
-# Jalankan pertama kali / setelah ada perubahan kode
-docker compose up --build
-
-# Jalankan di background
-docker compose up -d
-
-# Stop container
-docker compose down
-
-# Reset total (hapus database & volume)
-docker compose down -v
-docker compose up --build
-
-# Lihat log API
-docker logs maildesk_api
-
-# Masuk ke database PostgreSQL
-docker exec -it maildesk_postgres psql -U maildesk_user -d maildesk_db
-```
-
----
-
-## 🧪 Contoh Testing via cURL
-
-```bash
-# GET nomor agenda preview
-curl http://localhost:5000/api/surat/nomor-agenda/preview
-
-# POST surat masuk
-curl -X POST http://localhost:5000/api/surat \
-  -H "Content-Type: application/json" \
-  -d '{
-    "noSurat": "421.3/B.1/DISDIK/2026",
-    "tanggalSurat": "2026-05-07",
-    "pengirim": "Dinas Pendidikan",
-    "penerima": "Sekretaris",
-    "perihal": "Undangan Rapat",
-    "userId": 2
-  }'
-
-# GET semua surat (inbox / dashboard)
-curl "http://localhost:5000/api/surat?page=1&limit=10"
-
-# GET surat masuk saja
-curl "http://localhost:5000/api/surat/masuk?page=1&limit=10"
-
-# GET surat keluar saja
-curl "http://localhost:5000/api/surat/keluar?page=1&limit=10"
-
-# GET detail surat
-curl http://localhost:5000/api/surat/1
-
-# Upload PDF
-curl -X POST http://localhost:5000/api/surat/1/upload-pdf \
-  -F "file=@/path/to/file.pdf"
-```
----
-
-**Last Updated**: 7 Mei 2026 · **Sprint**: 1 · **Version**: 1.0.0-sprint1
+```text
+docs: add main project readme
