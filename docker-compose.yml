@@ -1,0 +1,66 @@
+# ============================================================
+# MailDesk Docker Compose — Sprint 1
+# Services: postgres, api
+# ============================================================
+
+version: "3.9"
+
+services:
+
+  # ── PostgreSQL Database ────────────────────────────────────
+  postgres:
+    image: postgres:16-alpine          # Alpine = image ringan
+    container_name: maildesk_postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB:       ${POSTGRES_DB}
+      POSTGRES_USER:     ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+    ports:
+      - "5433:5432"                    # host:container
+    volumes:
+      - postgres_data:/var/lib/postgresql/data          # data persisten
+      - ./docker/postgres/init.sql:/docker-entrypoint-initdb.d/01_init.sql
+      - ./docker/postgres/seed.sql:/docker-entrypoint-initdb.d/02_seed.sql
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER} -d ${POSTGRES_DB}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - maildesk_network
+
+  # ── ASP.NET Core API ───────────────────────────────────────
+  api:
+    build:
+      context: .
+      dockerfile: MailDesk.API/Dockerfile
+    container_name: maildesk_api
+    restart: unless-stopped
+    environment:
+      ASPNETCORE_ENVIRONMENT:  ${ASPNETCORE_ENVIRONMENT}
+      ASPNETCORE_URLS:         http://+:5000
+      ConnectionStrings__DefaultConnection: >
+        Host=${POSTGRES_HOST};
+        Port=${POSTGRES_PORT};
+        Database=${POSTGRES_DB};
+        Username=${POSTGRES_USER};
+        Password=${POSTGRES_PASSWORD}
+    ports:
+      - "${API_PORT}:5000"             # akses: http://localhost:5000
+    depends_on:
+      postgres:
+        condition: service_healthy     # tunggu postgres ready dulu
+    networks:
+      - maildesk_network
+
+# ── Volumes ────────────────────────────────────────────────────
+volumes:
+  postgres_data:
+    name: maildesk_postgres_data_sprint1
+
+# ── Networks ───────────────────────────────────────────────────
+networks:
+  maildesk_network:
+    name: maildesk_network
+    driver: bridge

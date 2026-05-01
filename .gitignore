@@ -1,0 +1,34 @@
+## .gitignore for ASP.NET Core + PostgreSQL
+
+# Build outputs
+bin/
+obj/
+
+# Rider
+.idea/
+
+# Environment & secrets 
+.env
+appsettings.Development.json
+appsettings.Production.json
+appsettings.Staging.json
+
+# Database files
+*.db
+*.sqlite
+
+# Logs
+*.log
+logs/
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# NuGet
+*.nupkg
+.nuget/
+packages/
+
+# Docker volumes (data lokal)
+docker/volumes/
