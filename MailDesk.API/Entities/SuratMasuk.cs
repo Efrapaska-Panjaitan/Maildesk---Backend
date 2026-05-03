@@ -28,13 +28,19 @@ public class SuratMasuk
     [Column("perihal")]
     public string Perihal { get; set; } = string.Empty;
 
-    // file_lampiran & nama_file ditangani di task berikutnya (upload PDF)
+     // File lampiran — binary tidak dipakai (nullable)
     [Column("file_lampiran")]
     public byte[]? FileLampiran { get; set; }
 
+    // Nama file asli dari pengirim
     [Column("nama_file")]
     [MaxLength(255)]
     public string? NamaFile { get; set; }
+
+    // Path file di server — digunakan untuk upload PDF
+    [Column("file_path")]
+    [MaxLength(500)]
+    public string? FilePath { get; set; }
 
     [Column("is_archived")]
     public bool IsArchived { get; set; } = false;

@@ -85,9 +85,56 @@ public class SuratMasukController : ControllerBase
     /// Get surat masuk by ID. (Placeholder — akan dikembangkan di task tracking)
     /// </summary>
     [HttpGet("{id}")]
-    public async Task<IActionResult> GetSuratMasukById(int id)
+    public IActionResult GetSuratMasukById(int id)
     {
         // Akan diimplementasikan penuh di task: API tracking disposisi
         return Ok(new { message = $"Endpoint get by ID {id} - akan dikembangkan di task tracking." });
+    }
+
+    /// <summary>
+    /// Upload file PDF lampiran surat masuk.
+    /// </summary>
+    /// <param name="id">ID surat masuk yang sudah dicatat</param>
+    /// <param name="file">File PDF (maksimal 10MB)</param>
+    /// <response code="200">File berhasil diupload.</response>
+    /// <response code="400">Validasi gagal (bukan PDF / terlalu besar).</response>
+    /// <response code="404">Surat masuk tidak ditemukan.</response>
+    [HttpPost("{id}/upload-pdf")]
+    [Consumes("multipart/form-data")]
+    [ProducesResponseType(typeof(UploadPdfResponse), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(object), StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    public async Task<IActionResult> UploadPdf(
+        [FromRoute] int id,
+        [FromForm(Name = "file")] IFormFile file)
+    {
+        try
+        {
+            var result = await _suratMasukService.UploadPdfAsync(id, file);
+
+            return Ok(new
+            {
+                success = true,
+                message = "File PDF berhasil diupload.",
+                data = result
+            });
+        }
+        catch (KeyNotFoundException ex)
+        {
+            return NotFound(new { success = false, message = ex.Message });
+        }
+        catch (InvalidOperationException ex)
+        {
+            return BadRequest(new { success = false, message = ex.Message });
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error saat upload PDF surat masuk ID: {Id}", id);
+            return StatusCode(500, new
+            {
+                success = false,
+                message = "Terjadi kesalahan pada server."
+            });
+        }
     }
 }

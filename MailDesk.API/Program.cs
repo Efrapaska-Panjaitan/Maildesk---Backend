@@ -1,6 +1,7 @@
 using MailDesk.API.Data;
 using MailDesk.API.Services;
 using MailDesk.API.Services.Interfaces;
+using MailDesk.API.Helpers;
 using Microsoft.EntityFrameworkCore;
 
 var builder = WebApplication.CreateBuilder(args);
@@ -27,11 +28,16 @@ builder.Services.AddSwaggerGen(c =>
     var xmlFile = $"{System.Reflection.Assembly.GetExecutingAssembly().GetName().Name}.xml";
     var xmlPath = Path.Combine(AppContext.BaseDirectory, xmlFile);
     if (File.Exists(xmlPath)) c.IncludeXmlComments(xmlPath);
+
+    //IFormFile
+    c.OperationFilter<SwaggerFileOperationFilter>();
 });
 
 var app = builder.Build();
 
 // ── Middleware ───────────────────────────────────────────────────────────────
+app.UseStaticFiles();
+
 if (app.Environment.IsDevelopment())
 {
     app.UseSwagger();
