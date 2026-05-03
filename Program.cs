@@ -7,16 +7,12 @@ var builder = WebApplication.CreateBuilder(args);
 builder.Services.AddControllers();
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen();
-builder.Services.AddScoped<SuratMasukService>();
-builder.Services.AddScoped<SuratKeluarService>();
-
-Console.WriteLine("Connection string aktif:");
-Console.WriteLine(builder.Configuration.GetConnectionString("DefaultConnection"));
 
 builder.Services.AddDbContext<MaildeskDbContext>(options =>
     options.UseNpgsql(builder.Configuration.GetConnectionString("DefaultConnection")));
 
 builder.Services.AddScoped<SuratMasukService>();
+builder.Services.AddScoped<SuratKeluarService>();
 
 var app = builder.Build();
 

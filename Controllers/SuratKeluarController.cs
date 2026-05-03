@@ -25,10 +25,14 @@ public class SuratKeluarController : ControllerBase
         }
         catch (ArgumentException ex)
         {
-            return BadRequest(new
-            {
-                message = ex.Message
-            });
+            return BadRequest(new { message = ex.Message });
         }
+    }
+
+    [HttpPost]
+    public async Task<IActionResult> Create([FromBody] CreateSuratKeluarDto request)
+    {
+        var result = await _service.CreateAsync(request);
+        return CreatedAtAction(nameof(GetAll), new { id = result.Id }, result);
     }
 }

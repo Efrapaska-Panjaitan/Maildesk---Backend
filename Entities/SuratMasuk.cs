@@ -2,18 +2,15 @@ namespace Maildesk.Api.Entities;
 
 public class SuratMasuk
 {
-    public long Id { get; set; }
-    public string NomorAgenda { get; set; } = null!;
-    public string? NomorSurat { get; set; }
-    public DateOnly? TanggalSurat { get; set; }
-    public DateOnly TanggalDiterima { get; set; }
-    public string NamaPengirim { get; set; } = null!;
-    public string? InstansiPengirim { get; set; }
-    public string Perihal { get; set; } = null!;
-    public string? Deskripsi { get; set; }
-    public string? KodeKlasifikasi { get; set; }
-    public string? JenisSumber { get; set; }
-    public string TingkatPrioritas { get; set; } = "normal";
-    public string Status { get; set; } = "diterima";
-    public DateTime DibuatPada { get; set; } = DateTime.UtcNow;
+    public int Id { get; set; }
+    public string NoSurat { get; set; } = string.Empty;
+    public string? NomorAgenda { get; set; }
+    public DateOnly TanggalSurat { get; set; }
+    public string AsalPengirim { get; set; } = string.Empty;
+    public string Perihal { get; set; } = string.Empty;
+    public byte[]? FileLampiran { get; set; }
+    public string? NamaFile { get; set; }
+    public bool IsArchived { get; set; } = false;
+    public int? UserId { get; set; }
+    public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
 }

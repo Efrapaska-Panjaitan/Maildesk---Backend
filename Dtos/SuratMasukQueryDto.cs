@@ -4,17 +4,16 @@ namespace Maildesk.Api.Dtos;
 
 public class SuratMasukQueryDto
 {
+    public string? NoSurat { get; set; }
     public string? NomorAgenda { get; set; }
-    public string? NomorSurat { get; set; }
-    public string? NamaPengirim { get; set; }
+    public string? AsalPengirim { get; set; }
     public string? Perihal { get; set; }
-    public string? Status { get; set; }
-    public string? JenisSumber { get; set; }
+    public bool? IsArchived { get; set; }
 
-    public DateOnly? TanggalDiterimaDari { get; set; }
-    public DateOnly? TanggalDiterimaSampai { get; set; }
+    public DateOnly? TanggalSuratDari { get; set; }
+    public DateOnly? TanggalSuratSampai { get; set; }
 
-    public string SortBy { get; set; } = "tanggal_diterima";
+    public string SortBy { get; set; } = "tanggal_surat";
     public string SortDirection { get; set; } = "desc";
 
     [Range(1, 1000)]

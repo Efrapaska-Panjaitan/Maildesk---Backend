@@ -15,91 +15,63 @@ public class SuratMasukService
     }
 
     public async Task<SuratMasukItemDto> CreateAsync(CreateSuratMasukDto request)
-{
-    var entity = new SuratMasuk
     {
-        NomorAgenda = request.NomorAgenda,
-        NomorSurat = request.NomorSurat,
-        TanggalSurat = request.TanggalSurat,
-        TanggalDiterima = request.TanggalDiterima,
-        NamaPengirim = request.NamaPengirim,
-        InstansiPengirim = request.InstansiPengirim,
-        Perihal = request.Perihal,
-        Deskripsi = request.Deskripsi,
-        KodeKlasifikasi = request.KodeKlasifikasi,
-        JenisSumber = request.JenisSumber,
-        TingkatPrioritas = request.TingkatPrioritas,
-        Status = request.Status,
-        DibuatPada = DateTime.UtcNow
-    };
+        var entity = new SuratMasuk
+        {
+            NoSurat       = request.NoSurat,
+            NomorAgenda   = request.NomorAgenda,
+            TanggalSurat  = request.TanggalSurat,
+            AsalPengirim  = request.AsalPengirim,
+            Perihal       = request.Perihal,
+            NamaFile      = request.NamaFile,
+            IsArchived    = false,
+            CreatedAt     = DateTime.UtcNow
+        };
 
-    _db.SuratMasuk.Add(entity);
-    await _db.SaveChangesAsync();
+        _db.SuratMasuk.Add(entity);
+        await _db.SaveChangesAsync();
 
-    return new SuratMasukItemDto
-    {
-        Id = entity.Id,
-        NomorAgenda = entity.NomorAgenda,
-        NomorSurat = entity.NomorSurat,
-        TanggalSurat = entity.TanggalSurat,
-        TanggalDiterima = entity.TanggalDiterima,
-        NamaPengirim = entity.NamaPengirim,
-        InstansiPengirim = entity.InstansiPengirim,
-        Perihal = entity.Perihal,
-        JenisSumber = entity.JenisSumber,
-        Status = entity.Status
-    };
-}
+        return MapToDto(entity);
+    }
+
     public async Task<PagedResponseDto<SuratMasukItemDto>> GetAllAsync(SuratMasukQueryDto request)
     {
         ValidateSort(request);
 
         IQueryable<SuratMasuk> query = _db.SuratMasuk.AsNoTracking();
 
+        // --- Filter ---
+        if (!string.IsNullOrWhiteSpace(request.NoSurat))
+            query = query.Where(x => x.NoSurat.Contains(request.NoSurat));
+
         if (!string.IsNullOrWhiteSpace(request.NomorAgenda))
-            query = query.Where(x => x.NomorAgenda.Contains(request.NomorAgenda));
+            query = query.Where(x => x.NomorAgenda != null && x.NomorAgenda.Contains(request.NomorAgenda));
 
-        if (!string.IsNullOrWhiteSpace(request.NomorSurat))
-            query = query.Where(x => x.NomorSurat != null && x.NomorSurat.Contains(request.NomorSurat));
-
-        if (!string.IsNullOrWhiteSpace(request.NamaPengirim))
-            query = query.Where(x => x.NamaPengirim.Contains(request.NamaPengirim));
+        if (!string.IsNullOrWhiteSpace(request.AsalPengirim))
+            query = query.Where(x => x.AsalPengirim.Contains(request.AsalPengirim));
 
         if (!string.IsNullOrWhiteSpace(request.Perihal))
             query = query.Where(x => x.Perihal.Contains(request.Perihal));
 
-        if (!string.IsNullOrWhiteSpace(request.Status))
-            query = query.Where(x => x.Status == request.Status);
+        if (request.IsArchived.HasValue)
+            query = query.Where(x => x.IsArchived == request.IsArchived.Value);
 
-        if (!string.IsNullOrWhiteSpace(request.JenisSumber))
-            query = query.Where(x => x.JenisSumber == request.JenisSumber);
+        if (request.TanggalSuratDari.HasValue)
+            query = query.Where(x => x.TanggalSurat >= request.TanggalSuratDari.Value);
 
-        if (request.TanggalDiterimaDari.HasValue)
-            query = query.Where(x => x.TanggalDiterima >= request.TanggalDiterimaDari.Value);
+        if (request.TanggalSuratSampai.HasValue)
+            query = query.Where(x => x.TanggalSurat <= request.TanggalSuratSampai.Value);
 
-        if (request.TanggalDiterimaSampai.HasValue)
-            query = query.Where(x => x.TanggalDiterima <= request.TanggalDiterimaSampai.Value);
-
+        // --- Sorting ---
         query = ApplySorting(query, request.SortBy, request.SortDirection);
 
+        // --- Pagination ---
         var totalData = await query.CountAsync();
 
         var items = await query
             .Skip((request.Page - 1) * request.PageSize)
             .Take(request.PageSize)
-            .Select(x => new SuratMasukItemDto
-            {
-                Id = x.Id,
-                NomorAgenda = x.NomorAgenda,
-                NomorSurat = x.NomorSurat,
-                TanggalSurat = x.TanggalSurat,
-                TanggalDiterima = x.TanggalDiterima,
-                NamaPengirim = x.NamaPengirim,
-                InstansiPengirim = x.InstansiPengirim,
-                Perihal = x.Perihal,
-                JenisSumber = x.JenisSumber,
-                Status = x.Status
-            })
+            .Select(x => MapToDto(x))
             .ToListAsync();
 
         return new PagedResponseDto<SuratMasukItemDto>
@@ -107,54 +79,62 @@ public class SuratMasukService
             Data = items,
             Meta = new PaginationMeta
             {
-                Page = request.Page,
-                PageSize = request.PageSize,
-                TotalData = totalData,
-                TotalPage = (int)Math.Ceiling((double)totalData / request.PageSize),
-                SortBy = request.SortBy,
+                Page          = request.Page,
+                PageSize      = request.PageSize,
+                TotalData     = totalData,
+                TotalPage     = (int)Math.Ceiling((double)totalData / request.PageSize),
+                SortBy        = request.SortBy,
                 SortDirection = request.SortDirection
             }
         };
     }
 
-   private static IQueryable<SuratMasuk> ApplySorting(IQueryable<SuratMasuk> query, string sortBy, string sortDirection)
-{
-    var isAsc = sortDirection.ToLower() == "asc";
-
-    return sortBy.ToLower() switch
+    private static SuratMasukItemDto MapToDto(SuratMasuk x) => new()
     {
-        "nomor_agenda" => isAsc ? query.OrderBy(x => x.NomorAgenda) : query.OrderByDescending(x => x.NomorAgenda),
-        "nomor_surat" => isAsc ? query.OrderBy(x => x.NomorSurat) : query.OrderByDescending(x => x.NomorSurat),
-        "tanggal_surat" => isAsc ? query.OrderBy(x => x.TanggalSurat) : query.OrderByDescending(x => x.TanggalSurat),
-        "tanggal_diterima" => isAsc ? query.OrderBy(x => x.TanggalDiterima) : query.OrderByDescending(x => x.TanggalDiterima),
-        "nama_pengirim" => isAsc ? query.OrderBy(x => x.NamaPengirim) : query.OrderByDescending(x => x.NamaPengirim),
-        "status" => isAsc ? query.OrderBy(x => x.Status) : query.OrderByDescending(x => x.Status),
-        "jenis_sumber" => isAsc ? query.OrderBy(x => x.JenisSumber) : query.OrderByDescending(x => x.JenisSumber),
-        _ => isAsc ? query.OrderBy(x => x.TanggalDiterima) : query.OrderByDescending(x => x.TanggalDiterima)
+        Id           = x.Id,
+        NoSurat      = x.NoSurat,
+        NomorAgenda  = x.NomorAgenda,
+        TanggalSurat = x.TanggalSurat,
+        AsalPengirim = x.AsalPengirim,
+        Perihal      = x.Perihal,
+        NamaFile     = x.NamaFile,
+        IsArchived   = x.IsArchived,
+        CreatedAt    = x.CreatedAt
     };
-}
+
+    private static IQueryable<SuratMasuk> ApplySorting(
+        IQueryable<SuratMasuk> query, string sortBy, string sortDirection)
+    {
+        var asc = sortDirection.ToLower() == "asc";
+        return sortBy.ToLower() switch
+        {
+            "no_surat"      => asc ? query.OrderBy(x => x.NoSurat)      : query.OrderByDescending(x => x.NoSurat),
+            "nomor_agenda"  => asc ? query.OrderBy(x => x.NomorAgenda)  : query.OrderByDescending(x => x.NomorAgenda),
+            "asal_pengirim" => asc ? query.OrderBy(x => x.AsalPengirim) : query.OrderByDescending(x => x.AsalPengirim),
+            "perihal"       => asc ? query.OrderBy(x => x.Perihal)      : query.OrderByDescending(x => x.Perihal),
+            "is_archived"   => asc ? query.OrderBy(x => x.IsArchived)   : query.OrderByDescending(x => x.IsArchived),
+            "created_at"    => asc ? query.OrderBy(x => x.CreatedAt)    : query.OrderByDescending(x => x.CreatedAt),
+            _               => asc ? query.OrderBy(x => x.TanggalSurat) : query.OrderByDescending(x => x.TanggalSurat)
+        };
+    }
+
     private static void ValidateSort(SuratMasukQueryDto request)
     {
-        var allowedSortBy = new[]
+        var allowed = new[]
         {
-            "tanggal_diterima",
-            "nomor_agenda",
-            "nomor_surat",
-            "tanggal_surat",
-            "nama_pengirim",
-            "status",
-            "jenis_sumber"
+            "tanggal_surat", "no_surat", "nomor_agenda",
+            "asal_pengirim", "perihal", "is_archived", "created_at"
         };
 
-        if (!allowedSortBy.Contains(request.SortBy.ToLower()))
+        if (!allowed.Contains(request.SortBy.ToLower()))
             throw new ArgumentException("sortBy tidak valid.");
 
         if (request.SortDirection.ToLower() is not ("asc" or "desc"))
             throw new ArgumentException("sortDirection harus asc atau desc.");
 
-        if (request.TanggalDiterimaDari.HasValue &&
-            request.TanggalDiterimaSampai.HasValue &&
-            request.TanggalDiterimaDari > request.TanggalDiterimaSampai)
-            throw new ArgumentException("TanggalDiterimaDari tidak boleh lebih besar dari TanggalDiterimaSampai.");
+        if (request.TanggalSuratDari.HasValue &&
+            request.TanggalSuratSampai.HasValue &&
+            request.TanggalSuratDari > request.TanggalSuratSampai)
+            throw new ArgumentException("TanggalSuratDari tidak boleh lebih besar dari TanggalSuratSampai.");
     }
 }

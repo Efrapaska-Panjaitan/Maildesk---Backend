@@ -1,17 +1,26 @@
-namespace Maildesk.Api.Entities;
+using System.ComponentModel.DataAnnotations;
 
-public class SuratKeluar
+namespace Maildesk.Api.Dtos;
+
+public class CreateSuratKeluarDto
 {
-    public int Id { get; set; }
+    [StringLength(100)]
     public string? NoSurat { get; set; }
+
+    [StringLength(100)]
     public string? NomorAgenda { get; set; }
+
     public DateOnly? TanggalSurat { get; set; }
+
+    [Required(ErrorMessage = "Penerima surat wajib diisi.")]
+    [StringLength(150)]
     public string Kepada { get; set; } = string.Empty;
+
+    [Required(ErrorMessage = "Perihal wajib diisi.")]
     public string Perihal { get; set; } = string.Empty;
-    public byte[]? FileLampiran { get; set; }
+
     public string? NamaFile { get; set; }
+
+    [StringLength(50)]
     public string Status { get; set; } = "Draft";
-    public bool IsArchived { get; set; } = false;
-    public int? PembuatId { get; set; }
-    public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
 }

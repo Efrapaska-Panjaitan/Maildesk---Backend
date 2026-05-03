@@ -25,18 +25,14 @@ public class SuratMasukController : ControllerBase
         }
         catch (ArgumentException ex)
         {
-            return BadRequest(new
-            {
-                message = ex.Message
-            });
+            return BadRequest(new { message = ex.Message });
         }
     }
 
     [HttpPost]
     public async Task<IActionResult> Create([FromBody] CreateSuratMasukDto request)
     {
-         var result = await _service.CreateAsync(request);
-
-          return CreatedAtAction(nameof(GetAll), new { id = result.Id }, result);
+        var result = await _service.CreateAsync(request);
+        return CreatedAtAction(nameof(GetAll), new { id = result.Id }, result);
     }
 }
