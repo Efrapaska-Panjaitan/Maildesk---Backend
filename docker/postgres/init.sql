@@ -27,6 +27,7 @@ CREATE TABLE IF NOT EXISTS surat_masuk (
     perihal TEXT NOT NULL,
     file_lampiran BYTEA,
     nama_file VARCHAR(255),
+    file_path VARCHAR(500),
     is_archived BOOLEAN DEFAULT FALSE,
     user_id INT REFERENCES users(id),
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP

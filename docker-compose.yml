@@ -3,8 +3,6 @@
 # Services: postgres, api
 # ============================================================
 
-version: "3.9"
-
 services:
 
   # ── PostgreSQL Database ────────────────────────────────────
@@ -48,6 +46,8 @@ services:
         Password=${POSTGRES_PASSWORD}
     ports:
       - "${API_PORT}:5000"             # akses: http://localhost:5000
+    volumes:
+      - pdf_uploads:/app/wwwroot/uploads
     depends_on:
       postgres:
         condition: service_healthy     # tunggu postgres ready dulu
@@ -58,6 +58,8 @@ services:
 volumes:
   postgres_data:
     name: maildesk_postgres_data_sprint1
+  pdf_uploads:
+    name: maildesk_pdf_uploads_sprint1
 
 # ── Networks ───────────────────────────────────────────────────
 networks:

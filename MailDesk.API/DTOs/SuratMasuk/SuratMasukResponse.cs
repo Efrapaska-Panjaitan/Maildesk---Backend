@@ -10,5 +10,8 @@ public class SuratMasukResponse
     public string Perihal { get; set; } = string.Empty;
     public bool IsArchived { get; set; }
     public string? PencatatNama { get; set; }  // nama user yang mencatat
+    public string? NamaFile { get; set; }        
+    public string? FilePath { get; set; }         
+    public bool HasLampiran => FilePath != null; // helper property
     public DateTime CreatedAt { get; set; }
 }
