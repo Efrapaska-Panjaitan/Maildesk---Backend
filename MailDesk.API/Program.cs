@@ -11,7 +11,7 @@ builder.Services.AddDbContext<AppDbContext>(options =>
     options.UseNpgsql(builder.Configuration.GetConnectionString("DefaultConnection")));
 
 // ── Services ────────────────────────────────────────────────────────────────
-builder.Services.AddScoped<ISuratMasukService, SuratMasukService>();
+builder.Services.AddScoped<ISuratService, SuratService>();
 
 // ── Controllers & Swagger ───────────────────────────────────────────────────
 builder.Services.AddControllers();

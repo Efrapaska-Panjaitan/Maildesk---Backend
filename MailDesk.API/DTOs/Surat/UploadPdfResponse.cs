@@ -1,8 +1,8 @@
-namespace MailDesk.API.DTOs.SuratMasuk;
+namespace MailDesk.API.DTOs.Surat;
 
 public class UploadPdfResponse
 {
-    public int SuratMasukId { get; set; }
+    public int SuratId { get; set; }
     public string NamaFile { get; set; } = string.Empty;
     public string FilePath { get; set; } = string.Empty;
     public long FileSizeBytes { get; set; }

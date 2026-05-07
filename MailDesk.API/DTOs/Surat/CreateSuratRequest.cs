@@ -1,8 +1,8 @@
 using System.ComponentModel.DataAnnotations;
 
-namespace MailDesk.API.DTOs.SuratMasuk;
+namespace MailDesk.API.DTOs.Surat;
 
-public class CreateSuratMasukRequest
+public class CreateSuratRequest
 {
     /// <summary>
     /// Nomor surat dari pengirim. Contoh: 421.3/B.1/DISDIK/2026
@@ -20,15 +20,23 @@ public class CreateSuratMasukRequest
     /// <summary>
     /// Nama instansi / orang pengirim surat.
     /// </summary>
-    [Required(ErrorMessage = "Asal pengirim wajib diisi.")]
-    [MaxLength(150, ErrorMessage = "Asal pengirim maksimal 150 karakter.")]
-    public string AsalPengirim { get; set; } = string.Empty;
+    [Required(ErrorMessage = "Pengirim wajib diisi.")]
+    [MaxLength(150, ErrorMessage = "Pengirim maksimal 150 karakter.")]
+    public string Pengirim { get; set; } = string.Empty;
+
+    [Required(ErrorMessage = "Penerima wajib diisi.")]
+    [MaxLength(150)]
+    public string Penerima { get; set; } = string.Empty;
 
     /// <summary>
     /// Perihal / subject surat.
     /// </summary>
     [Required(ErrorMessage = "Perihal wajib diisi.")]
     public string Perihal { get; set; } = string.Empty;
+
+    //Undangan, Edaran, dll
+    [MaxLength(50)]
+    public string? KategoriSurat { get; set; }
 
     /// <summary>
     /// ID user yang mencatat surat (biasanya TU/Sekretaris yang login).
@@ -37,4 +45,12 @@ public class CreateSuratMasukRequest
     public int UserId { get; set; }
 
     // NomorAgenda tidak diisi manual — digenerate otomatis oleh sistem
+
+    /// <summary>
+    /// Nomor agenda dari preview (optional).
+    /// Jika kosong, backend akan generate otomatis.
+    /// Jika sudah dipakai, backend akan generate nomor baru.
+    /// </summary>
+    [MaxLength(100)]
+    public string? NomorAgendaPreview { get; set; }
 }

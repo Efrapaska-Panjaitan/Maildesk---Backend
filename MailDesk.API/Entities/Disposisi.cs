@@ -10,8 +10,8 @@ public class Disposisi
     [Column("id")]
     public int Id { get; set; }
 
-    [Column("surat_masuk_id")]
-    public int? SuratMasukId { get; set; }
+    [Column("surat_id")]
+    public int? SuratId { get; set; }
 
     [Column("pemberi_id")]
     public int? PemberiId { get; set; }
@@ -29,19 +29,33 @@ public class Disposisi
     [Column("instruksi")]
     public string Instruksi { get; set; } = string.Empty;
 
-    [Column("nomor_agenda")]
+    //default 'Pending'
+    [Column("status")]
+    [MaxLength(50)]
+    public string Status { get; set; } = "Pending";
+
+    /*[Column("nomor_agenda")]
     [MaxLength(100)]
     public string? NomorAgenda { get; set; }
+    */
 
-    [Column("is_archived")]
+    /*[Column("is_archived")]
     public bool IsArchived { get; set; } = false;
+    */
 
     [Column("created_at")]
     public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
 
-    // Navigation properties
-    [ForeignKey("SuratMasukId")]
-    public SuratMasuk? SuratMasuk { get; set; }
+    //diisi saat penerima klik "Terima Disposisi"
+    [Column("waktu_diterima")]
+    public DateTime? WaktuDiterima { get; set; }
+
+    //diisi saat penerima klik "Tugas Selesai"
+    [Column("completed_at")]
+    public DateTime? CompletedAt { get; set; }
+
+    [ForeignKey("SuratId")]
+    public Surat? Surat { get; set; }
 
     [ForeignKey("PemberiId")]
     public User? Pemberi { get; set; }

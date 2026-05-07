@@ -9,10 +9,19 @@ public static class NomorAgendaHelper
     public static string Generate(int urutanBulanIni)
     {
         var now = DateTime.Now;
-        var tahun = now.Year.ToString();
-        var bulan = now.Month.ToString("D2");  // 2 digit, e.g. "05"
-        var urutan = urutanBulanIni.ToString("D3"); // 3 digit, e.g. "001"
+        return Generate(now.Year, now.Month, urutanBulanIni);
+    }
 
-        return $"SM/{tahun}/{bulan}/{urutan}";
+    public static string Generate(int year, int month, int urutan)
+    {
+        return $"SM/{year}/{month:D2}/{urutan:D3}";
+    }
+
+    /// <summary>
+    /// Preview nomor agenda berikutnya (belum final)
+    /// </summary>
+    public static string Preview(int currentCount)
+    {
+        return Generate(currentCount + 1);
     }
 }

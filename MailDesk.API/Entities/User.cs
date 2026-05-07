@@ -14,6 +14,14 @@ public class User
     [MaxLength(100)]
     public string Nama { get; set; } = string.Empty;
 
+    [Column("email")]
+    [MaxLength(100)]
+    public string Email { get; set; } = string.Empty;
+
+    [Column("password")]
+    [MaxLength(255)]
+    public string Password { get; set; } = string.Empty;
+
     [Column("role_id")]
     public int? RoleId { get; set; }
 

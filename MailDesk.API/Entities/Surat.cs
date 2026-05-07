@@ -3,8 +3,8 @@ using System.ComponentModel.DataAnnotations.Schema;
 
 namespace MailDesk.API.Entities;
 
-[Table("surat_masuk")]
-public class SuratMasuk
+[Table("surat")]
+public class Surat
 {
     [Key]
     [Column("id")]
@@ -12,23 +12,40 @@ public class SuratMasuk
 
     [Column("no_surat")]
     [MaxLength(100)]
-    public string NoSurat { get; set; } = string.Empty;
+    public string? NoSurat { get; set; } 
 
     [Column("nomor_agenda")]
     [MaxLength(100)]
     public string? NomorAgenda { get; set; }
 
+    //'Masuk' atau 'Keluar'
+    [Column("jenis_surat")]
+    [MaxLength(20)]
+    public string JenisSurat { get; set; } = string.Empty;
+
+    //Undangan, Edaran, dll
+    [Column("kategori_surat")]
+    [MaxLength(50)]
+    public string? KategoriSurat { get; set; }
+
     [Column("tanggal_surat")]
     public DateOnly TanggalSurat { get; set; }
 
-    [Column("asal_pengirim")]
+    [Column("pengirim")]
     [MaxLength(150)]
-    public string AsalPengirim { get; set; } = string.Empty;
+    public string Pengirim { get; set; } = string.Empty;
+
+    [Column("penerima")]
+    [MaxLength(150)]
+    public string Penerima { get; set; } = string.Empty;
 
     [Column("perihal")]
     public string Perihal { get; set; } = string.Empty;
 
-     // File lampiran — binary tidak dipakai (nullable)
+    //untuk OCR full-text search
+    [Column("isi_teks_ocr")]
+    public string? IsiTeksOcr { get; set; }
+
     [Column("file_lampiran")]
     public byte[]? FileLampiran { get; set; }
 
@@ -37,10 +54,10 @@ public class SuratMasuk
     [MaxLength(255)]
     public string? NamaFile { get; set; }
 
-    // Path file di server — digunakan untuk upload PDF
-    [Column("file_path")]
-    [MaxLength(500)]
-    public string? FilePath { get; set; }
+    // default 'Baru'
+    [Column("status")]
+    [MaxLength(50)]
+    public string Status { get; set; } = "Baru";
 
     [Column("is_archived")]
     public bool IsArchived { get; set; } = false;
