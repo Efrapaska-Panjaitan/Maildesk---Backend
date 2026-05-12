@@ -86,7 +86,7 @@ public class DisposisiService : IDisposisiService
             SifatDisposisi   = request.SifatDisposisi,
             Instruksi        = request.Instruksi,
             Status           = "Pending",
-            CreatedAt        = DateTime.UtcNow
+            CreatedAt        = DateTime.Now  // WIB
         };
 
         _context.Disposisis.Add(disposisi);
@@ -99,7 +99,7 @@ public class DisposisiService : IDisposisiService
             {
                 ParentId  = request.ParentDisposisiId.Value,
                 ChildId   = disposisi.Id,
-                CreatedAt = DateTime.UtcNow
+                CreatedAt = DateTime.Now  // WIB
             });
             await _context.SaveChangesAsync();
         }
