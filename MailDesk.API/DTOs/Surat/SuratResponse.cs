@@ -13,8 +13,22 @@ public class SuratResponse
     public string Perihal { get; set; } = string.Empty;
     public string Status { get; set; } = string.Empty;
     public bool IsArchived { get; set; }
-    public string? PencatatNama { get; set; }  // nama user yang mencatat
-    public string? NamaFile { get; set; }               
-    public bool HasLampiran => NamaFile != null; // helper property
+
+    /// <summary>Nama TU/Sekretaris yang mencatat surat.</summary>
+    public string? PencatatNama { get; set; }
+
+    /// <summary>ID Pimpinan yang dituju TU/Sekretaris untuk disposisi.</summary>
+    public int? DitujukanKeId { get; set; }
+
+    /// <summary>Nama Pimpinan yang dituju TU/Sekretaris untuk disposisi.</summary>
+    public string? DitujukanKeNama { get; set; }
+
+    /// <summary>Path relatif file PDF (contoh: uploads/surat/2026/05/{uuid}.pdf). Null jika belum ada lampiran.</summary>
+    public string? NamaFile { get; set; }
+
+    /// <summary>URL lengkap untuk mengakses file PDF. Null jika belum ada lampiran.</summary>
+    public string? FileUrl { get; set; }
+
+    public bool HasLampiran => NamaFile != null;
     public DateTime CreatedAt { get; set; }
 }

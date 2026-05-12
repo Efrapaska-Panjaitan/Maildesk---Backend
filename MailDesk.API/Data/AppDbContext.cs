@@ -17,6 +17,11 @@ public class AppDbContext : DbContext
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
+
+        //=========================================
+        // Surat 
+        //=========================================
+        
         // Unique constraint untuk nomor_agenda
         modelBuilder.Entity<Surat>()
             .HasIndex(s => s.NomorAgenda)
@@ -34,11 +39,18 @@ public class AppDbContext : DbContext
             .HasIndex(u => u.Email)
             .IsUnique();
 
-        // Relasi Surat -> User (pencatat)
+        // Relasi Surat -> User (pencatat — TU/Sekretaris yang menginput)
         modelBuilder.Entity<Surat>()
             .HasOne(s => s.User)
             .WithMany()
             .HasForeignKey(s => s.UserId)
+            .OnDelete(DeleteBehavior.SetNull);
+
+        // Relasi Surat → User (ditujukan ke — Pimpinan tujuan disposisi)
+        modelBuilder.Entity<Surat>()
+            .HasOne(s => s.DitujukanKe)
+            .WithMany()
+            .HasForeignKey(s => s.DitujukanKeId)
             .OnDelete(DeleteBehavior.SetNull);
         
         // Relasi DisposisiRelation → Disposisi (parent)
@@ -53,6 +65,47 @@ public class AppDbContext : DbContext
             .HasOne(dr => dr.Child)
             .WithMany()
             .HasForeignKey(dr => dr.ChildId)
+            .OnDelete(DeleteBehavior.Restrict);
+        
+         // Satu child hanya boleh punya satu parent
+        modelBuilder.Entity<DisposisiRelation>()
+            .HasIndex(dr => dr.ChildId)
+            .IsUnique();
+        
+        //===========================================
+        //Disposisi
+        //===========================================
+
+        // Check constraint sifat disposisi
+        modelBuilder.Entity<Disposisi>()
+            .ToTable(t => t.HasCheckConstraint(
+                "CK_disposisi_sifat",
+                "sifat_disposisi IN ('Biasa', 'Penting', 'Mendesak', 'Rahasia')"));
+
+        modelBuilder.Entity<Disposisi>()
+            .ToTable(t => t.HasCheckConstraint(
+                "CK_disposisi_status",
+                "status IN ('Pending', 'Accepted', 'Completed')"));
+
+        // Relasi Disposisi → Surat
+        modelBuilder.Entity<Disposisi>()
+            .HasOne(d => d.Surat)
+            .WithMany()
+            .HasForeignKey(d => d.SuratId)
+            .OnDelete(DeleteBehavior.Restrict);
+
+        // Relasi Disposisi → Pemberi (User)
+        modelBuilder.Entity<Disposisi>()
+            .HasOne(d => d.Pemberi)
+            .WithMany()
+            .HasForeignKey(d => d.PemberiId)
+            .OnDelete(DeleteBehavior.Restrict);
+
+        // Relasi Disposisi → Penerima (User)
+        modelBuilder.Entity<Disposisi>()
+            .HasOne(d => d.Penerima)
+            .WithMany()
+            .HasForeignKey(d => d.PenerimaId)
             .OnDelete(DeleteBehavior.Restrict);
 
         base.OnModelCreating(modelBuilder);

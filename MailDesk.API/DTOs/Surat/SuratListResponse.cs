@@ -13,5 +13,9 @@ public class SuratListResponse
     public string Perihal { get; set; } = string.Empty;
     public string Status { get; set; } = string.Empty;
     public bool HasLampiran { get; set; }
+
+    /// <summary>Nama Pimpinan yang dituju TU/Sekretaris untuk disposisi.</summary>
+    public string? DitujukanKeNama { get; set; }
+
     public DateTime CreatedAt { get; set; }
 }
