@@ -96,7 +96,7 @@ public class SuratService : ISuratService
             Status        = "Baru",
             UserId        = request.UserId,
             DitujukanKeId = request.DitujukanKeId,
-            CreatedAt     = DateTime.UtcNow,
+            CreatedAt     = DateTime.Now,  // WIB — timezone diset via TZ=Asia/Jakarta di docker-compose
             IsArchived    = false
         };
 
@@ -189,7 +189,7 @@ public class SuratService : ISuratService
             FilePath      = relativePath,
             FileUrl       = $"{baseUrl}/{relativePath}",
             FileSizeBytes = file.Length,
-            UploadedAt    = DateTime.UtcNow
+            UploadedAt    = DateTime.Now  // WIB
         };
     }
 

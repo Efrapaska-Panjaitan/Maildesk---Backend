@@ -4,6 +4,11 @@ using MailDesk.API.Services.Interfaces;
 using MailDesk.API.Helpers;
 using Microsoft.EntityFrameworkCore;
 
+// ── Timestamp Behavior ──────────────────────────────────────────────────────
+// Nonaktifkan konversi UTC otomatis Npgsql agar DateTime.Now (WIB) disimpan
+// dan dikembalikan sebagai waktu lokal, bukan dikonversi ke UTC.
+AppContext.SetSwitch("Npgsql.EnableLegacyTimestampBehavior", true);
+
 var builder = WebApplication.CreateBuilder(args);
 
 // ── Database ────────────────────────────────────────────────────────────────
@@ -14,6 +19,7 @@ builder.Services.AddDbContext<AppDbContext>(options =>
 builder.Services.AddHttpContextAccessor();
 builder.Services.AddScoped<ISuratService, SuratService>();
 builder.Services.AddScoped<IDisposisiService, DisposisiService>();
+builder.Services.AddScoped<IUserService, UserService>();
 
 // ── Controllers & Swagger ───────────────────────────────────────────────────
 builder.Services.AddControllers();
