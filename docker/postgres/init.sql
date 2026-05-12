@@ -1,85 +1,97 @@
--- ============================================================
--- MailDesk Database — Sprint 1 (Updated Schema)
--- ============================================================
-
+-- ─────────────────────────────────────────────────
+-- ROLES
+-- ─────────────────────────────────────────────────
 CREATE TABLE IF NOT EXISTS roles (
-    id        SERIAL PRIMARY KEY,
-    nama_role VARCHAR(50) NOT NULL
+    id          SERIAL PRIMARY KEY,
+    nama_role   VARCHAR(50) NOT NULL UNIQUE
 );
 
+-- ─────────────────────────────────────────────────
+-- USERS
+-- ─────────────────────────────────────────────────
 CREATE TABLE IF NOT EXISTS users (
-    id         SERIAL PRIMARY KEY,
-    nama       VARCHAR(100) NOT NULL,
-    email      VARCHAR(100) UNIQUE NOT NULL,  -- ← BARU
-    password   VARCHAR(255) NOT NULL,          -- ← BARU
-    role_id    INT REFERENCES roles(id),
-    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+    id          SERIAL PRIMARY KEY,
+    nama        VARCHAR(150) NOT NULL,
+    email       VARCHAR(100) NOT NULL UNIQUE,
+    password    VARCHAR(255) NOT NULL,
+    role_id     INT REFERENCES roles(id) ON DELETE SET NULL,
+    created_at  TIMESTAMP DEFAULT NOW()
 );
 
-CREATE TABLE IF NOT EXISTS template_surat (  -- ← TABEL BARU
-    id            SERIAL PRIMARY KEY,
-    nama_template VARCHAR(100) NOT NULL,
-    isi_template  TEXT NOT NULL,
-    dibuat_oleh   INT REFERENCES users(id),
-    created_at    TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+-- ─────────────────────────────────────────────────
+-- SURAT
+-- ─────────────────────────────────────────────────
+CREATE TABLE IF NOT EXISTS surat (
+    id              SERIAL PRIMARY KEY,
+    no_surat        VARCHAR(100),
+    nomor_agenda    VARCHAR(100) UNIQUE,
+    jenis_surat     VARCHAR(20) NOT NULL CHECK (jenis_surat IN ('Masuk', 'Keluar')),
+    kategori_surat  VARCHAR(50),
+    tanggal_surat   DATE NOT NULL,
+    pengirim        VARCHAR(150) NOT NULL,
+    penerima        VARCHAR(150) NOT NULL,  -- nama penerima yang tertulis di surat fisik
+    perihal         TEXT NOT NULL,
+    isi_teks_ocr    TEXT,
+    file_lampiran   BYTEA,
+    nama_file       VARCHAR(255),
+    status          VARCHAR(20) DEFAULT 'Baru'
+                    CHECK (status IN ('Baru', 'Diproses', 'Selesai')),
+    is_archived     BOOLEAN DEFAULT FALSE,
+    user_id         INT REFERENCES users(id) ON DELETE SET NULL,  -- TU/Sekretaris yang mencatat
+    ditujukan_ke_id INT REFERENCES users(id) ON DELETE SET NULL,  -- Pimpinan tujuan disposisi
+    created_at      TIMESTAMP DEFAULT NOW()
 );
 
-CREATE TABLE IF NOT EXISTS surat (  -- ← GANTI surat_masuk + surat_keluar
-    id             SERIAL PRIMARY KEY,
-    no_surat       VARCHAR(100),
-    nomor_agenda   VARCHAR(100) UNIQUE,
-    jenis_surat    VARCHAR(20) CHECK (jenis_surat IN ('Masuk', 'Keluar')),
-    kategori_surat VARCHAR(50),
-    tanggal_surat  DATE NOT NULL,
-    pengirim       VARCHAR(150) NOT NULL,
-    penerima       VARCHAR(150) NOT NULL,
-    perihal        TEXT NOT NULL,
-    isi_teks_ocr   TEXT,
-    file_lampiran  BYTEA,
-    nama_file      VARCHAR(255),
-    status         VARCHAR(50) DEFAULT 'Baru',
-    is_archived    BOOLEAN DEFAULT FALSE,
-    user_id        INT REFERENCES users(id),
-    created_at     TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+-- ─────────────────────────────────────────────────
+-- TEMPLATE SURAT
+-- ─────────────────────────────────────────────────
+CREATE TABLE IF NOT EXISTS template_surat (
+    id              SERIAL PRIMARY KEY,
+    nama_template   VARCHAR(150) NOT NULL,
+    isi_template    TEXT,
+    dibuat_oleh     INT REFERENCES users(id) ON DELETE SET NULL,
+    created_at      TIMESTAMP DEFAULT NOW()
 );
 
-CREATE TABLE IF NOT EXISTS inbox (  -- ← TABEL BARU
-    id                SERIAL PRIMARY KEY,
-    surat_id          INT REFERENCES surat(id),
-    pengirim_id       INT REFERENCES users(id),
-    penerima_id       INT REFERENCES users(id),
-    status            VARCHAR(50) DEFAULT 'Menunggu Tindakan',
-    catatan_pengantar TEXT,
-    created_at        TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+-- ─────────────────────────────────────────────────
+-- INBOX
+-- ─────────────────────────────────────────────────
+CREATE TABLE IF NOT EXISTS inbox (
+    id                  SERIAL PRIMARY KEY,
+    surat_id            INT NOT NULL REFERENCES surat(id) ON DELETE CASCADE,
+    pengirim_id         INT REFERENCES users(id) ON DELETE SET NULL,
+    penerima_id         INT REFERENCES users(id) ON DELETE SET NULL,
+    status              VARCHAR(20) DEFAULT 'Belum Dibaca',
+    catatan_pengantar   TEXT,
+    created_at          TIMESTAMP DEFAULT NOW()
 );
 
+-- ─────────────────────────────────────────────────
+-- DISPOSISI
+-- ─────────────────────────────────────────────────
 CREATE TABLE IF NOT EXISTS disposisi (
-    id                SERIAL PRIMARY KEY,
-    surat_id          INT REFERENCES surat(id),  -- ← BERUBAH dari surat_masuk_id
-    pemberi_id        INT REFERENCES users(id),
-    penerima_id       INT REFERENCES users(id),
-    tanggal_disposisi DATE NOT NULL,
-    sifat_disposisi   VARCHAR(50),
-    instruksi         TEXT NOT NULL,
-    status            VARCHAR(50) DEFAULT 'Pending',  -- ← BARU
-    created_at        TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    waktu_diterima    TIMESTAMP,   -- ← BARU
-    completed_at      TIMESTAMP    -- ← BARU
+    id                  SERIAL PRIMARY KEY,
+    surat_id            INT NOT NULL REFERENCES surat(id) ON DELETE RESTRICT,
+    pemberi_id          INT NOT NULL REFERENCES users(id) ON DELETE RESTRICT,
+    penerima_id         INT NOT NULL REFERENCES users(id) ON DELETE RESTRICT,
+    tanggal_disposisi   DATE NOT NULL,
+    sifat_disposisi     VARCHAR(20) NOT NULL DEFAULT 'Biasa'
+                        CHECK (sifat_disposisi IN ('Biasa', 'Penting', 'Mendesak', 'Rahasia')),
+    instruksi           TEXT,
+    status              VARCHAR(20) NOT NULL DEFAULT 'Pending'
+                        CHECK (status IN ('Pending', 'Accepted', 'Completed')),
+    waktu_diterima      TIMESTAMP,
+    completed_at        TIMESTAMP,
+    created_at          TIMESTAMP DEFAULT NOW()
 );
 
-CREATE TABLE IF NOT EXISTS disposisi_relation (  -- ← GANTI tracking_disposisi
-    id         SERIAL PRIMARY KEY,
-    parent_id  INT REFERENCES disposisi(id),
-    child_id   INT REFERENCES disposisi(id),
-    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+-- ─────────────────────────────────────────────────
+-- DISPOSISI RELATION (chain tracking)
+-- ─────────────────────────────────────────────────
+CREATE TABLE IF NOT EXISTS disposisi_relation (
+    id          SERIAL PRIMARY KEY,
+    parent_id   INT NOT NULL REFERENCES disposisi(id) ON DELETE RESTRICT,
+    child_id    INT NOT NULL REFERENCES disposisi(id) ON DELETE RESTRICT,
+    created_at  TIMESTAMP DEFAULT NOW(),
+    UNIQUE (child_id)   -- satu child hanya boleh punya satu parent
 );
-
--- Indexing
-CREATE INDEX IF NOT EXISTS idx_surat_tanggal
-    ON surat(tanggal_surat);
-CREATE INDEX IF NOT EXISTS idx_surat_nomor_agenda
-    ON surat(nomor_agenda);
-CREATE INDEX IF NOT EXISTS idx_surat_jenis
-    ON surat(jenis_surat);
-CREATE INDEX IF NOT EXISTS idx_surat_pengirim
-    ON surat(pengirim);

@@ -11,17 +11,17 @@ public class DisposisiRelation
     public int Id { get; set; }
 
     [Column("parent_id")]
-    public int? ParentId { get; set; }
+    public int ParentId { get; set; }
 
     [Column("child_id")]
-    public int? ChildId { get; set; }
+    public int ChildId { get; set; }
 
     [Column("created_at")]
     public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
 
     [ForeignKey("ParentId")]
-    public Disposisi? Parent { get; set; }
+    public Disposisi Parent { get; set; } = null!;
 
     [ForeignKey("ChildId")]
-    public Disposisi? Child { get; set; }
+    public Disposisi Child { get; set; } = null!;
 }

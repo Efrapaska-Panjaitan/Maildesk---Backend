@@ -39,10 +39,17 @@ public class CreateSuratRequest
     public string? KategoriSurat { get; set; }
 
     /// <summary>
-    /// ID user yang mencatat surat (biasanya TU/Sekretaris yang login).
+    /// ID TU/Sekretaris yang mencatat surat ini (user yang sedang login).
     /// </summary>
     [Required(ErrorMessage = "User ID pencatat wajib diisi.")]
     public int UserId { get; set; }
+
+    /// <summary>
+    /// ID Pimpinan/user yang dituju untuk membaca dan melakukan disposisi surat ini.
+    /// Dipilih oleh TU/Sekretaris saat mencatat surat masuk.
+    /// </summary>
+    [Required(ErrorMessage = "Penerima tujuan disposisi wajib diisi.")]
+    public int DitujukanKeId { get; set; }
 
     // NomorAgenda tidak diisi manual — digenerate otomatis oleh sistem
 

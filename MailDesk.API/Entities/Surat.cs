@@ -62,13 +62,28 @@ public class Surat
     [Column("is_archived")]
     public bool IsArchived { get; set; } = false;
 
+    /// <summary>
+    /// ID TU/Sekretaris yang mencatat surat ini ke sistem.
+    /// </summary>
     [Column("user_id")]
     public int? UserId { get; set; }
+
+    /// <summary>
+    /// ID Pimpinan/user yang dituju oleh TU/Sekretaris
+    /// untuk membaca dan melakukan disposisi surat ini.
+    /// </summary>
+    [Column("ditujukan_ke_id")]
+    public int? DitujukanKeId { get; set; }
 
     [Column("created_at")]
     public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
 
-    // Navigation property
+    // Navigation properties
+    /// <summary>TU/Sekretaris pencatat surat.</summary>
     [ForeignKey("UserId")]
     public User? User { get; set; }
+
+    /// <summary>Pimpinan/user tujuan disposisi yang dipilih oleh TU saat mencatat.</summary>
+    [ForeignKey("DitujukanKeId")]
+    public User? DitujukanKe { get; set; }
 }

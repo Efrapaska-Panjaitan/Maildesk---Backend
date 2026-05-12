@@ -11,23 +11,23 @@ public class Disposisi
     public int Id { get; set; }
 
     [Column("surat_id")]
-    public int? SuratId { get; set; }
+    public int SuratId { get; set; }
 
     [Column("pemberi_id")]
-    public int? PemberiId { get; set; }
+    public int PemberiId { get; set; }
 
     [Column("penerima_id")]
-    public int? PenerimaId { get; set; }
+    public int PenerimaId { get; set; }
 
     [Column("tanggal_disposisi")]
     public DateOnly TanggalDisposisi { get; set; }
 
     [Column("sifat_disposisi")]
     [MaxLength(50)]
-    public string? SifatDisposisi { get; set; }
+    public string SifatDisposisi { get; set; } = "Biasa"; // Biasa | Penting | ..
 
     [Column("instruksi")]
-    public string Instruksi { get; set; } = string.Empty;
+    public string? Instruksi { get; set; } 
 
     //default 'Pending'
     [Column("status")]
@@ -55,11 +55,11 @@ public class Disposisi
     public DateTime? CompletedAt { get; set; }
 
     [ForeignKey("SuratId")]
-    public Surat? Surat { get; set; }
+    public Surat Surat { get; set; } = null!;
 
     [ForeignKey("PemberiId")]
-    public User? Pemberi { get; set; }
+    public User Pemberi { get; set; } = null!;
 
     [ForeignKey("PenerimaId")]
-    public User? Penerima { get; set; }
+    public User Penerima { get; set; } = null!;
 }

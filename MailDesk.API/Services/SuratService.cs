@@ -11,13 +11,16 @@ public class SuratService : ISuratService
 {
     private readonly AppDbContext _context;
     private readonly ILogger<SuratService> _logger;
+    private readonly IHttpContextAccessor _httpContextAccessor;
 
     public SuratService(
         AppDbContext context,
-        ILogger<SuratService> logger)
+        ILogger<SuratService> logger,
+        IHttpContextAccessor httpContextAccessor)
     {
         _context = context;
         _logger = logger;
+        _httpContextAccessor = httpContextAccessor;
     }
 
     public async Task<SuratResponse> CreateSuratMasukAsync(CreateSuratRequest request)
@@ -72,33 +75,41 @@ public class SuratService : ISuratService
             nomorAgenda = NomorAgendaHelper.Generate(jumlahBulanIni + 1);
         }
 
+        // Validasi: DitujukanKeId harus merujuk ke user yang ada
+        var ditujukanKeExists = await _context.Users
+            .AnyAsync(u => u.Id == request.DitujukanKeId);
+        if (!ditujukanKeExists)
+            throw new KeyNotFoundException(
+                $"User dengan ID {request.DitujukanKeId} (penerima tujuan) tidak ditemukan.");
+
         // Buat entitas baru
         var surat = new Surat
         {
-            NoSurat      = request.NoSurat,
-            NomorAgenda  = nomorAgenda,
-            JenisSurat   = "Masuk",                // ← Fix ke 'Masuk'
+            NoSurat       = request.NoSurat,
+            NomorAgenda   = nomorAgenda,
+            JenisSurat    = "Masuk",
             KategoriSurat = request.KategoriSurat,
-            TanggalSurat = request.TanggalSurat,
-            Pengirim     = request.Pengirim,
-            Penerima     = request.Penerima,
-            Perihal      = request.Perihal,
-            Status       = "Baru",
-            UserId       = request.UserId,
-            CreatedAt    = DateTime.UtcNow,
-            IsArchived   = false
+            TanggalSurat  = request.TanggalSurat,
+            Pengirim      = request.Pengirim,
+            Penerima      = request.Penerima,
+            Perihal       = request.Perihal,
+            Status        = "Baru",
+            UserId        = request.UserId,
+            DitujukanKeId = request.DitujukanKeId,
+            CreatedAt     = DateTime.UtcNow,
+            IsArchived    = false
         };
 
         _context.Surats.Add(surat);
         await _context.SaveChangesAsync();
 
-        await _context.Entry(surat)
-            .Reference(s => s.User)
-            .LoadAsync();
+        // Load navigation properties untuk mapping response
+        await _context.Entry(surat).Reference(s => s.User).LoadAsync();
+        await _context.Entry(surat).Reference(s => s.DitujukanKe).LoadAsync();
 
         _logger.LogInformation(
-            "Surat masuk dicatat. NomorAgenda: {NomorAgenda}, NoSurat: {NoSurat}",
-            nomorAgenda, request.NoSurat);
+            "Surat masuk dicatat. NomorAgenda: {NomorAgenda}, NoSurat: {NoSurat}, DitujukanKe: {DitujukanKeId}",
+            nomorAgenda, request.NoSurat, request.DitujukanKeId);
 
         return MapToResponse(surat);
     }
@@ -139,10 +150,10 @@ public class SuratService : ISuratService
         // Generate unique filename agar tidak bentrok
         var uniqueFileName = $"{Guid.NewGuid()}{fileExtension}";
 
-        // Folder: wwwroot/uploads/surat-masuk/2026/05/
+        // Folder: wwwroot/uploads/surat/2026/05/
         var now = DateTime.Now;
-        var subFolder = Path.Combine("wwwroot", "uploads", "surat",
-            now.Year.ToString(), now.Month.ToString("D2"));
+        var yearMonth = Path.Combine(now.Year.ToString(), now.Month.ToString("D2"));
+        var subFolder  = Path.Combine("wwwroot", "uploads", "surat", yearMonth);
 
         // Buat folder kalau belum ada
         Directory.CreateDirectory(subFolder);
@@ -157,18 +168,26 @@ public class SuratService : ISuratService
         }
 
         // ── Update database ────────────────────────────────────────
-        surat.NamaFile = file.FileName;       // nama asli file
+        // Simpan path relatif (tanpa 'wwwroot/') agar bisa dikonstruksi jadi URL
+        var relativePath = $"uploads/surat/{yearMonth.Replace(Path.DirectorySeparatorChar, '/')}/{uniqueFileName}";
+        surat.NamaFile   = relativePath;
 
         await _context.SaveChangesAsync();
 
+        // Konstruksi base URL dari request yang sedang berjalan
+        var req     = _httpContextAccessor.HttpContext?.Request;
+        var baseUrl = req != null ? $"{req.Scheme}://{req.Host}" : string.Empty;
+
         _logger.LogInformation(
-            "PDF berhasil diupload. SuratId: {Id}, File: {NamaFile}",
-            suratId, file.FileName);
+            "PDF berhasil diupload. SuratId: {Id}, Path: {Path}",
+            suratId, relativePath);
 
         return new UploadPdfResponse
         {
             SuratId       = suratId,
-            NamaFile      = file.FileName,
+            NamaFileAsli  = file.FileName,
+            FilePath      = relativePath,
+            FileUrl       = $"{baseUrl}/{relativePath}",
             FileSizeBytes = file.Length,
             UploadedAt    = DateTime.UtcNow
         };
@@ -201,6 +220,7 @@ public class SuratService : ISuratService
     {
         var surat = await _context.Surats
             .Include(s => s.User)
+            .Include(s => s.DitujukanKe)
             .FirstOrDefaultAsync(s => s.Id == id);
 
         if (surat == null)
@@ -209,24 +229,30 @@ public class SuratService : ISuratService
         return MapToResponse(surat);
     }
 
-    private static SuratResponse MapToResponse(Surat s)
+    private SuratResponse MapToResponse(Surat s)
     {
+        var req     = _httpContextAccessor.HttpContext?.Request;
+        var baseUrl = req != null ? $"{req.Scheme}://{req.Host}" : string.Empty;
+
         return new SuratResponse
         {
-            Id           = s.Id,
-            NoSurat      = s.NoSurat,
-            NomorAgenda  = s.NomorAgenda ?? "-",
-            JenisSurat   = s.JenisSurat,
+            Id            = s.Id,
+            NoSurat       = s.NoSurat,
+            NomorAgenda   = s.NomorAgenda ?? "-",
+            JenisSurat    = s.JenisSurat,
             KategoriSurat = s.KategoriSurat,
-            TanggalSurat = s.TanggalSurat,
-            Pengirim     = s.Pengirim,
-            Penerima     = s.Penerima,
-            Perihal      = s.Perihal,
-            Status       = s.Status,
-            IsArchived   = s.IsArchived,
-            PencatatNama = s.User?.Nama,
-            NamaFile     = s.NamaFile,
-            CreatedAt    = s.CreatedAt
+            TanggalSurat  = s.TanggalSurat,
+            Pengirim      = s.Pengirim,
+            Penerima      = s.Penerima,
+            Perihal       = s.Perihal,
+            Status        = s.Status,
+            IsArchived    = s.IsArchived,
+            PencatatNama    = s.User?.Nama,
+            DitujukanKeId   = s.DitujukanKeId,
+            DitujukanKeNama = s.DitujukanKe?.Nama,
+            NamaFile      = s.NamaFile,
+            FileUrl       = s.NamaFile != null ? $"{baseUrl}/{s.NamaFile}" : null,
+            CreatedAt     = s.CreatedAt
         };
     }
 
@@ -254,6 +280,7 @@ public class SuratService : ISuratService
         // ── Base query ──────────────────────────────────────────
         var q = _context.Surats
             .Include(s => s.User)
+            .Include(s => s.DitujukanKe)
             .AsQueryable();
 
         // ── Filter jenis surat ──────────────────────────────────
@@ -319,18 +346,19 @@ public class SuratService : ISuratService
             .Take(limit)
             .Select(s => new SuratListResponse
             {
-                Id            = s.Id,
-                NoSurat       = s.NoSurat,
-                NomorAgenda   = s.NomorAgenda ?? "-",
-                JenisSurat    = s.JenisSurat,
-                KategoriSurat = s.KategoriSurat,
-                TanggalSurat  = s.TanggalSurat,
-                Pengirim      = s.Pengirim,
-                Penerima      = s.Penerima,
-                Perihal       = s.Perihal,
-                Status        = s.Status,
-                HasLampiran   = s.NamaFile != null,
-                CreatedAt     = s.CreatedAt
+                Id              = s.Id,
+                NoSurat         = s.NoSurat,
+                NomorAgenda     = s.NomorAgenda ?? "-",
+                JenisSurat      = s.JenisSurat,
+                KategoriSurat   = s.KategoriSurat,
+                TanggalSurat    = s.TanggalSurat,
+                Pengirim        = s.Pengirim,
+                Penerima        = s.Penerima,
+                Perihal         = s.Perihal,
+                Status          = s.Status,
+                HasLampiran     = s.NamaFile != null,
+                DitujukanKeNama = s.DitujukanKe != null ? s.DitujukanKe.Nama : null,
+                CreatedAt       = s.CreatedAt
             })
             .ToListAsync();
 
