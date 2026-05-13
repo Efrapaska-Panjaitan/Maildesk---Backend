@@ -14,6 +14,7 @@ public class AppDbContext : DbContext
     public DbSet<Role> Roles { get; set; }
     public DbSet<Disposisi> Disposisis { get; set; }
     public DbSet<DisposisiRelation> DisposisiRelations { get; set; }
+    public DbSet<DisposisiLog> DisposisiLogs { get; set; }
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -107,6 +108,33 @@ public class AppDbContext : DbContext
             .WithMany()
             .HasForeignKey(d => d.PenerimaId)
             .OnDelete(DeleteBehavior.Restrict);
+
+        //===========================================
+        // DisposisiLog
+        //===========================================
+
+        modelBuilder.Entity<DisposisiLog>()
+            .HasOne(l => l.Disposisi)
+            .WithMany()
+            .HasForeignKey(l => l.DisposisiId)
+            .OnDelete(DeleteBehavior.Cascade);
+
+        modelBuilder.Entity<DisposisiLog>()
+            .HasOne(l => l.Surat)
+            .WithMany()
+            .HasForeignKey(l => l.SuratId)
+            .OnDelete(DeleteBehavior.Cascade);
+
+        modelBuilder.Entity<DisposisiLog>()
+            .HasOne(l => l.User)
+            .WithMany()
+            .HasForeignKey(l => l.UserId)
+            .OnDelete(DeleteBehavior.SetNull);
+
+        modelBuilder.Entity<DisposisiLog>()
+            .ToTable(t => t.HasCheckConstraint(
+                "CK_disposisi_log_aksi",
+                "aksi IN ('DIBUAT', 'DITERIMA', 'DISELESAIKAN')"));
 
         base.OnModelCreating(modelBuilder);
     }
