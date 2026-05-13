@@ -107,7 +107,7 @@ public class SuratController : ControllerBase
 
     // ─────────────────────────────────────────────────────────
     // POST /api/surat/{id}/upload-pdf
-    // Ganti file PDF — untuk surat yang sudah ada
+    // Ganti file PDF untuk surat yang sudah ada
     // ─────────────────────────────────────────────────────────
     /// <summary>
     /// Ganti file PDF untuk surat yang sudah ada.
@@ -161,25 +161,43 @@ public class SuratController : ControllerBase
     }
 
     // ─────────────────────────────────────────────────────────
-    // GET /api/surat/masuk
-    // Daftar seluruh surat masuk (tanpa filter)
+    // GET /api/surat  — Dashboard semua surat (kode Akmal)
     // ─────────────────────────────────────────────────────────
     /// <summary>
-    /// Get daftar seluruh surat masuk, diurutkan dari yang terbaru.
+    /// Get semua surat untuk halaman Dashboard/Inbox.
+    /// Mendukung filter, search, sorting, dan pagination.
     /// </summary>
-    [HttpGet("masuk")]
-    [ProducesResponseType(typeof(IEnumerable<SuratListResponse>), StatusCodes.Status200OK)]
-    public async Task<IActionResult> GetSuratMasuk()
+    [HttpGet]
+    [ProducesResponseType(typeof(PaginatedResponse<SuratListResponse>), StatusCodes.Status200OK)]
+    public async Task<IActionResult> GetAllSurat([FromQuery] SuratQueryParams query)
     {
         try
         {
-            var result = await _suratService.GetAllSuratMasukAsync();
-            return Ok(new
-            {
-                success   = true,
-                totalData = result.Count(),
-                data      = result
-            });
+            var result = await _suratService.GetAllSuratAsync(query);
+            return Ok(new { success = true, data = result.Data, meta = result.Meta });
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error saat get all surat.");
+            return StatusCode(500, new { success = false, message = "Terjadi kesalahan pada server." });
+        }
+    }
+
+    // ─────────────────────────────────────────────────────────
+    // GET /api/surat/masuk — Surat Masuk dengan filter (kode Akmal)
+    // ─────────────────────────────────────────────────────────
+    /// <summary>
+    /// Get daftar surat masuk untuk halaman Surat Masuk.
+    /// Mendukung filter (status, kategori, tanggal), search, sorting, dan pagination.
+    /// </summary>
+    [HttpGet("masuk")]
+    [ProducesResponseType(typeof(PaginatedResponse<SuratListResponse>), StatusCodes.Status200OK)]
+    public async Task<IActionResult> GetSuratMasuk([FromQuery] SuratQueryParams query)
+    {
+        try
+        {
+            var result = await _suratService.GetSuratMasukAsync(query);
+            return Ok(new { success = true, data = result.Data, meta = result.Meta });
         }
         catch (Exception ex)
         {

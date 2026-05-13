@@ -24,7 +24,7 @@ public class SuratService : ISuratService
     }
 
     // ─────────────────────────────────────────────────────────
-    // CREATE SURAT MASUK (termasuk upload PDF — wajib)
+    // CREATE SURAT MASUK + upload PDF wajib (kode Efrapaska)
     // ─────────────────────────────────────────────────────────
     public async Task<SuratResponse> CreateSuratMasukAsync(CreateSuratRequest request, IFormFile file)
     {
@@ -104,7 +104,6 @@ public class SuratService : ISuratService
         _context.Surats.Add(surat);
         await _context.SaveChangesAsync();
 
-        // Load navigation properties
         await _context.Entry(surat).Reference(s => s.User).LoadAsync();
         await _context.Entry(surat).Reference(s => s.DitujukanKe).LoadAsync();
 
@@ -116,7 +115,7 @@ public class SuratService : ISuratService
     }
 
     // ─────────────────────────────────────────────────────────
-    // UPLOAD PDF (ganti/replace file yang sudah ada)
+    // UPLOAD PDF — ganti file yang sudah ada (kode Efrapaska)
     // ─────────────────────────────────────────────────────────
     public async Task<UploadPdfResponse> UploadPdfAsync(int suratId, IFormFile file)
     {
@@ -192,14 +191,87 @@ public class SuratService : ISuratService
     }
 
     // ─────────────────────────────────────────────────────────
-    // GET ALL SURAT MASUK (tanpa filter — semua data)
+    // GET ALL SURAT — Dashboard (kode Akmal, dipertahankan)
     // ─────────────────────────────────────────────────────────
-    public async Task<IEnumerable<SuratListResponse>> GetAllSuratMasukAsync()
+    public async Task<PaginatedResponse<SuratListResponse>> GetAllSuratAsync(SuratQueryParams query)
     {
-        return await _context.Surats
+        return await GetSuratByFilterAsync(query, jenisSurat: null);
+    }
+
+    // ─────────────────────────────────────────────────────────
+    // GET SURAT MASUK — dengan filter & pagination (kode Akmal, dipertahankan)
+    // ─────────────────────────────────────────────────────────
+    public async Task<PaginatedResponse<SuratListResponse>> GetSuratMasukAsync(SuratQueryParams query)
+    {
+        return await GetSuratByFilterAsync(query, jenisSurat: "Masuk");
+    }
+
+    // ─────────────────────────────────────────────────────────
+    // CORE FILTER — Dipakai oleh GetAllSurat & GetSuratMasuk (kode Akmal)
+    // ─────────────────────────────────────────────────────────
+    private async Task<PaginatedResponse<SuratListResponse>> GetSuratByFilterAsync(
+        SuratQueryParams query, string? jenisSurat)
+    {
+        var q = _context.Surats
+            .Include(s => s.User)
             .Include(s => s.DitujukanKe)
-            .Where(s => s.JenisSurat == "Masuk")
-            .OrderByDescending(s => s.CreatedAt)
+            .AsQueryable();
+
+        // Filter jenis surat
+        if (!string.IsNullOrEmpty(jenisSurat))
+            q = q.Where(s => s.JenisSurat == jenisSurat);
+
+        // Filter arsip
+        if (!query.IncludeArchived)
+            q = q.Where(s => s.IsArchived == false);
+
+        // Filter status
+        if (!string.IsNullOrEmpty(query.Status))
+            q = q.Where(s => s.Status == query.Status);
+
+        // Filter kategori
+        if (!string.IsNullOrEmpty(query.KategoriSurat))
+            q = q.Where(s => s.KategoriSurat == query.KategoriSurat);
+
+        // Filter tanggal
+        if (query.TanggalDari.HasValue)
+            q = q.Where(s => s.TanggalSurat >= query.TanggalDari.Value);
+
+        if (query.TanggalSampai.HasValue)
+            q = q.Where(s => s.TanggalSurat <= query.TanggalSampai.Value);
+
+        // Search (perihal / pengirim / penerima / no_surat / nomor_agenda)
+        if (!string.IsNullOrEmpty(query.Search))
+        {
+            var keyword = query.Search.ToLower();
+            q = q.Where(s =>
+                s.Perihal.ToLower().Contains(keyword) ||
+                s.Pengirim.ToLower().Contains(keyword) ||
+                s.Penerima.ToLower().Contains(keyword) ||
+                (s.NoSurat != null && s.NoSurat.ToLower().Contains(keyword)) ||
+                (s.NomorAgenda != null && s.NomorAgenda.ToLower().Contains(keyword)));
+        }
+
+        // Sorting
+        var isAsc = query.SortOrder.ToLower() == "asc";
+        q = query.SortBy.ToLower() switch
+        {
+            "tanggal"      => isAsc ? q.OrderBy(s => s.TanggalSurat)    : q.OrderByDescending(s => s.TanggalSurat),
+            "nomor_agenda" => isAsc ? q.OrderBy(s => s.NomorAgenda)     : q.OrderByDescending(s => s.NomorAgenda),
+            "pengirim"     => isAsc ? q.OrderBy(s => s.Pengirim)        : q.OrderByDescending(s => s.Pengirim),
+            "status"       => isAsc ? q.OrderBy(s => s.Status)          : q.OrderByDescending(s => s.Status),
+            _              => q.OrderByDescending(s => s.CreatedAt)      // default
+        };
+
+        // Pagination
+        var totalData = await q.CountAsync();
+        var limit     = Math.Max(1, Math.Min(query.Limit, 100));
+        var page      = Math.Max(1, query.Page);
+        var skip      = (page - 1) * limit;
+
+        var data = await q
+            .Skip(skip)
+            .Take(limit)
             .Select(s => new SuratListResponse
             {
                 Id              = s.Id,
@@ -212,15 +284,31 @@ public class SuratService : ISuratService
                 Penerima        = s.Penerima,
                 Perihal         = s.Perihal,
                 Status          = s.Status,
-                HasLampiran     = s.FilePath != null,
+                HasLampiran     = s.FilePath != null,   // pakai FilePath (lebih akurat)
                 DitujukanKeNama = s.DitujukanKe != null ? s.DitujukanKe.Nama : null,
                 CreatedAt       = s.CreatedAt
             })
             .ToListAsync();
+
+        var totalPages = (int)Math.Ceiling((double)totalData / limit);
+
+        return new PaginatedResponse<SuratListResponse>
+        {
+            Data = data,
+            Meta = new PaginationMeta
+            {
+                CurrentPage = page,
+                TotalPages  = totalPages,
+                TotalData   = totalData,
+                Limit       = limit,
+                HasNextPage = page < totalPages,
+                HasPrevPage = page > 1
+            }
+        };
     }
 
     // ─────────────────────────────────────────────────────────
-    // PRIVATE HELPER — Validasi & simpan PDF ke disk
+    // HELPER — Validasi & simpan PDF ke disk (kode Efrapaska)
     // ─────────────────────────────────────────────────────────
     private static async Task<(string namaFile, string filePath)> SavePdfToDiskAsync(IFormFile file)
     {
@@ -239,26 +327,24 @@ public class SuratService : ISuratService
             throw new InvalidOperationException(
                 $"Ukuran file terlalu besar. Maksimal 10MB, file kamu: {file.Length / (1024 * 1024)}MB.");
 
-        // UUID filename agar tidak bentrok di disk
         var uniqueFileName = $"{Guid.NewGuid()}{ext}";
-        var now = DateTime.Now;
-        var yearMonth = Path.Combine(now.Year.ToString(), now.Month.ToString("D2"));
-        var subFolder = Path.Combine("wwwroot", "uploads", "surat", yearMonth);
+        var now            = DateTime.Now;
+        var yearMonth      = Path.Combine(now.Year.ToString(), now.Month.ToString("D2"));
+        var subFolder      = Path.Combine("wwwroot", "uploads", "surat", yearMonth);
         Directory.CreateDirectory(subFolder);
 
         var fullPath = Path.Combine(subFolder, uniqueFileName);
         using (var stream = new FileStream(fullPath, FileMode.Create))
             await file.CopyToAsync(stream);
 
-        // nama asli untuk display, path relatif untuk URL
-        var namaFile = file.FileName;
+        var namaFile = file.FileName;   // nama asli untuk display
         var filePath = $"uploads/surat/{yearMonth.Replace(Path.DirectorySeparatorChar, '/')}/{uniqueFileName}";
 
         return (namaFile, filePath);
     }
 
     // ─────────────────────────────────────────────────────────
-    // PRIVATE HELPER — Map entity ke SuratResponse
+    // HELPER — Map entity ke SuratResponse
     // ─────────────────────────────────────────────────────────
     private SuratResponse MapToResponse(Surat s)
     {

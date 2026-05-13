@@ -13,6 +13,9 @@ public interface ISuratService
     Task<NomorAgendaPreviewResponse> GetNomorAgendaPreviewAsync();
     Task<SuratResponse> GetSuratByIdAsync(int id);
 
-    /// <summary>Get semua surat masuk tanpa filter — return seluruh data.</summary>
-    Task<IEnumerable<SuratListResponse>> GetAllSuratMasukAsync();
+    /// <summary>Get semua surat (masuk) dengan filter & pagination — untuk Dashboard.</summary>
+    Task<PaginatedResponse<SuratListResponse>> GetAllSuratAsync(SuratQueryParams query);
+
+    /// <summary>Get surat masuk dengan filter & pagination — task Akmal.</summary>
+    Task<PaginatedResponse<SuratListResponse>> GetSuratMasukAsync(SuratQueryParams query);
 }
