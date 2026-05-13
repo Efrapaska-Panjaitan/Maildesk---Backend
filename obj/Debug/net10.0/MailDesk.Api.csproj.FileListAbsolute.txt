@@ -120,3 +120,4 @@ C:\Users\Lenovo\MailDesk.Api\obj\Debug\net10.0\refint\MailDesk.Api.dll
 C:\Users\Lenovo\MailDesk.Api\obj\Debug\net10.0\MailDesk.Api.pdb
 C:\Users\Lenovo\MailDesk.Api\obj\Debug\net10.0\MailDesk.Api.genruntimeconfig.cache
 C:\Users\Lenovo\MailDesk.Api\obj\Debug\net10.0\ref\MailDesk.Api.dll
+C:\Users\Lenovo\MailDesk.Api\obj\Debug\net10.0\MailDesk.Api.sourcelink.json
