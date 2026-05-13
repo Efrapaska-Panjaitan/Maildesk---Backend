@@ -23,12 +23,12 @@ public class SuratResponse
     /// <summary>Nama Pimpinan yang dituju TU/Sekretaris untuk disposisi.</summary>
     public string? DitujukanKeNama { get; set; }
 
-    /// <summary>Path relatif file PDF (contoh: uploads/surat/2026/05/{uuid}.pdf). Null jika belum ada lampiran.</summary>
+    /// <summary>Nama asli file PDF dari pengirim (untuk display di UI).</summary>
     public string? NamaFile { get; set; }
 
     /// <summary>URL lengkap untuk mengakses file PDF. Null jika belum ada lampiran.</summary>
     public string? FileUrl { get; set; }
 
-    public bool HasLampiran => NamaFile != null;
+    public bool HasLampiran { get; set; }
     public DateTime CreatedAt { get; set; }
 }

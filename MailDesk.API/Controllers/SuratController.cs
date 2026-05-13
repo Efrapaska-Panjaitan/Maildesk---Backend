@@ -20,49 +20,51 @@ public class SuratController : ControllerBase
         _logger = logger;
     }
 
+    // ─────────────────────────────────────────────────────────
+    // POST /api/surat
+    // Catat surat masuk + upload file PDF (wajib, 1 request)
+    // ─────────────────────────────────────────────────────────
     /// <summary>
-    /// Catat surat masuk baru beserta metadata.
+    /// Catat surat masuk baru beserta file PDF-nya.
+    /// Kirim semua field sebagai <b>multipart/form-data</b> dalam satu request:
+    /// data surat (NoSurat, TanggalSurat, Pengirim, dll) + file PDF wajib.
+    /// Nomor agenda di-generate otomatis oleh sistem.
     /// </summary>
-    /// <remarks>
-    /// Nomor agenda akan di-generate otomatis oleh sistem.
-    /// File lampiran dihandle terpisah di endpoint upload-pdf.
-    /// </remarks>
     /// <response code="201">Surat masuk berhasil dicatat.</response>
-    /// <response code="400">Request tidak valid / nomor surat duplikat.</response>
-    /// <response code="500">Server error.</response>
+    /// <response code="400">Request tidak valid / file PDF tidak disertakan / nomor surat duplikat.</response>
     [HttpPost]
+    [Consumes("multipart/form-data")]
     [ProducesResponseType(typeof(SuratResponse), StatusCodes.Status201Created)]
     [ProducesResponseType(typeof(object), StatusCodes.Status400BadRequest)]
     [ProducesResponseType(StatusCodes.Status500InternalServerError)]
     public async Task<IActionResult> CreateSurat(
-        [FromBody] CreateSuratRequest request)
+        [FromForm] CreateSuratWithFileRequest request)
     {
-        // Validasi model (dari Data Annotations)
         if (!ModelState.IsValid)
             return BadRequest(new
             {
                 success = false,
-                errors = ModelState.Values
-                    .SelectMany(v => v.Errors)
-                    .Select(e => e.ErrorMessage)
+                errors  = ModelState.Values.SelectMany(v => v.Errors).Select(e => e.ErrorMessage)
             });
+
+        if (request.File == null || request.File.Length == 0)
+            return BadRequest(new { success = false, message = "File PDF wajib dilampirkan." });
 
         try
         {
-            var result = await _suratService.CreateSuratMasukAsync(request);
+            var result = await _suratService.CreateSuratMasukAsync(request, request.File);
 
             _logger.LogInformation(
-                "Surat masuk berhasil dicatat. NomorAgenda: {NomorAgenda}",
-                result.NomorAgenda);
+                "Surat masuk berhasil dicatat. NomorAgenda: {NomorAgenda}", result.NomorAgenda);
 
             return CreatedAtAction(
-                actionName: nameof(GetSuratById), // akan dibuat di task tracking
+                actionName: nameof(GetSuratById),
                 routeValues: new { id = result.Id },
                 value: new
                 {
                     success = true,
                     message = "Surat masuk berhasil dicatat.",
-                    data = result
+                    data    = result
                 });
         }
         catch (InvalidOperationException ex)
@@ -70,26 +72,21 @@ public class SuratController : ControllerBase
             _logger.LogWarning("Validasi gagal: {Message}", ex.Message);
             return BadRequest(new { success = false, message = ex.Message });
         }
+        catch (KeyNotFoundException ex)
+        {
+            return NotFound(new { success = false, message = ex.Message });
+        }
         catch (Exception ex)
         {
             _logger.LogError(ex, "Error saat mencatat surat masuk.");
-            return StatusCode(500, new
-            {
-                success = false,
-                message = "Terjadi kesalahan pada server. Silakan coba lagi."
-            });
+            return StatusCode(500, new { success = false, message = "Terjadi kesalahan pada server." });
         }
     }
 
-     // ─────────────────────────────────────────────────────────
-    // GET /api/surat/{id}
-    // Get detail surat berdasarkan ID
-    // (Akan dikembangkan di Task 4 - Tracking Disposisi)
     // ─────────────────────────────────────────────────────────
-    /// <summary>
-    /// Get detail surat berdasarkan ID.
-    /// </summary>
-    /// <param name="id">ID surat</param>
+    // GET /api/surat/{id}
+    // ─────────────────────────────────────────────────────────
+    /// <summary>Get detail surat berdasarkan ID.</summary>
     [HttpGet("{id}")]
     [ProducesResponseType(typeof(SuratResponse), StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
@@ -100,29 +97,23 @@ public class SuratController : ControllerBase
             var result = await _suratService.GetSuratByIdAsync(id);
             return Ok(new { success = true, data = result });
         }
-        catch (KeyNotFoundException ex)
-        {
-            return NotFound(new { success = false, message = ex.Message });
-        }
+        catch (KeyNotFoundException ex) { return NotFound(new { success = false, message = ex.Message }); }
         catch (Exception ex)
         {
             _logger.LogError(ex, "Error saat get surat ID: {Id}", id);
-            return StatusCode(500, new
-            {
-                success = false,
-                message = "Terjadi kesalahan pada server."
-            });
+            return StatusCode(500, new { success = false, message = "Terjadi kesalahan pada server." });
         }
     }
 
+    // ─────────────────────────────────────────────────────────
+    // POST /api/surat/{id}/upload-pdf
+    // Ganti file PDF — untuk surat yang sudah ada
+    // ─────────────────────────────────────────────────────────
     /// <summary>
-    /// Upload file PDF lampiran surat masuk.
+    /// Ganti file PDF untuk surat yang sudah ada.
+    /// Gunakan endpoint ini jika perlu mengganti/memperbarui lampiran PDF.
+    /// File lama akan dihapus otomatis.
     /// </summary>
-    /// <param name="id">ID surat masuk yang sudah dicatat</param>
-    /// <param name="file">File PDF (maksimal 10MB)</param>
-    /// <response code="200">File berhasil diupload.</response>
-    /// <response code="400">Validasi gagal (bukan PDF / terlalu besar).</response>
-    /// <response code="404">Surat masuk tidak ditemukan.</response>
     [HttpPost("{id}/upload-pdf")]
     [Consumes("multipart/form-data")]
     [ProducesResponseType(typeof(UploadPdfResponse), StatusCodes.Status200OK)]
@@ -135,42 +126,24 @@ public class SuratController : ControllerBase
         try
         {
             var result = await _suratService.UploadPdfAsync(id, file);
-
-            return Ok(new
-            {
-                success = true,
-                message = "File PDF berhasil diupload.",
-                data = result
-            });
+            return Ok(new { success = true, message = "File PDF berhasil diganti.", data = result });
         }
-        catch (KeyNotFoundException ex)
-        {
-            return NotFound(new { success = false, message = ex.Message });
-        }
-        catch (InvalidOperationException ex)
-        {
-            return BadRequest(new { success = false, message = ex.Message });
-        }
+        catch (KeyNotFoundException ex)      { return NotFound(new { success = false, message = ex.Message }); }
+        catch (InvalidOperationException ex) { return BadRequest(new { success = false, message = ex.Message }); }
         catch (Exception ex)
         {
             _logger.LogError(ex, "Error saat upload PDF suratID: {Id}", id);
-            return StatusCode(500, new
-            {
-                success = false,
-                message = "Terjadi kesalahan pada server."
-            });
+            return StatusCode(500, new { success = false, message = "Terjadi kesalahan pada server." });
         }
     }
 
+    // ─────────────────────────────────────────────────────────
+    // GET /api/surat/nomor-agenda/preview
+    // ─────────────────────────────────────────────────────────
     /// <summary>
     /// Get preview nomor agenda berikutnya untuk ditampilkan di form input.
-    /// Dipanggil saat halaman Input Surat Masuk pertama kali dibuka.
-    /// </summary>
-    /// <remarks>
     /// Nomor ini bersifat PREVIEW — nomor final dikonfirmasi saat simpan.
-    /// Jika ada 2 user buka form bersamaan, nomor final bisa berbeda.
-    /// </remarks>
-    /// <response code="200">Preview nomor agenda berhasil dibuat.</response>
+    /// </summary>
     [HttpGet("nomor-agenda/preview")]
     [ProducesResponseType(typeof(NomorAgendaPreviewResponse), StatusCodes.Status200OK)]
     public async Task<IActionResult> GetNomorAgendaPreview()
@@ -178,115 +151,40 @@ public class SuratController : ControllerBase
         try
         {
             var result = await _suratService.GetNomorAgendaPreviewAsync();
-
-            return Ok(new
-            {
-                success = true,
-                data = result
-            });
+            return Ok(new { success = true, data = result });
         }
         catch (Exception ex)
         {
             _logger.LogError(ex, "Error saat generate preview nomor agenda.");
-            return StatusCode(500, new
-            {
-                success = false,
-                message = "Terjadi kesalahan pada server."
-            });
+            return StatusCode(500, new { success = false, message = "Terjadi kesalahan pada server." });
         }
     }
 
-    // GET /api/surat
-    // Dashboard — semua surat (masuk + keluar)
-    // ──────────────────────────────────────────────────────────
-    /// <summary>
-    /// Get semua surat untuk halaman Dashboard/Inbox.
-    /// Menampilkan surat masuk dan surat keluar sekaligus.
-    /// </summary>
-    [HttpGet]
-    [ProducesResponseType(typeof(PaginatedResponse<SuratListResponse>), StatusCodes.Status200OK)]
-    public async Task<IActionResult> GetAllSurat([FromQuery] SuratQueryParams query)
-    {
-        try
-        {
-            var result = await _suratService.GetAllSuratAsync(query);
-            return Ok(new
-            {
-                success = true,
-                data    = result.Data,
-                meta    = result.Meta
-            });
-        }
-        catch (Exception ex)
-        {
-            _logger.LogError(ex, "Error saat get all surat.");
-            return StatusCode(500, new
-            {
-                success = false,
-                message = "Terjadi kesalahan pada server."
-            });
-        }
-    }
-
+    // ─────────────────────────────────────────────────────────
     // GET /api/surat/masuk
-    // Page Surat Masuk
-    // ──────────────────────────────────────────────────────────
+    // Daftar seluruh surat masuk (tanpa filter)
+    // ─────────────────────────────────────────────────────────
     /// <summary>
-    /// Get daftar surat masuk untuk halaman Surat Masuk.
+    /// Get daftar seluruh surat masuk, diurutkan dari yang terbaru.
     /// </summary>
     [HttpGet("masuk")]
-    [ProducesResponseType(typeof(PaginatedResponse<SuratListResponse>), StatusCodes.Status200OK)]
-    public async Task<IActionResult> GetSuratMasuk([FromQuery] SuratQueryParams query)
+    [ProducesResponseType(typeof(IEnumerable<SuratListResponse>), StatusCodes.Status200OK)]
+    public async Task<IActionResult> GetSuratMasuk()
     {
         try
         {
-            var result = await _suratService.GetSuratMasukAsync(query);
+            var result = await _suratService.GetAllSuratMasukAsync();
             return Ok(new
             {
-                success = true,
-                data    = result.Data,
-                meta    = result.Meta
+                success   = true,
+                totalData = result.Count(),
+                data      = result
             });
         }
         catch (Exception ex)
         {
             _logger.LogError(ex, "Error saat get surat masuk.");
-            return StatusCode(500, new
-            {
-                success = false,
-                message = "Terjadi kesalahan pada server."
-            });
-        }
-    }
-
-    // GET /api/surat/keluar
-    // Page Surat Keluar
-    // ──────────────────────────────────────────────────────────
-    /// <summary>
-    /// Get daftar surat keluar untuk halaman Surat Keluar.
-    /// </summary>
-    [HttpGet("keluar")]
-    [ProducesResponseType(typeof(PaginatedResponse<SuratListResponse>), StatusCodes.Status200OK)]
-    public async Task<IActionResult> GetSuratKeluar([FromQuery] SuratQueryParams query)
-    {
-        try
-        {
-            var result = await _suratService.GetSuratKeluarAsync(query);
-            return Ok(new
-            {
-                success = true,
-                data    = result.Data,
-                meta    = result.Meta
-            });
-        }
-        catch (Exception ex)
-        {
-            _logger.LogError(ex, "Error saat get surat keluar.");
-            return StatusCode(500, new
-            {
-                success = false,
-                message = "Terjadi kesalahan pada server."
-            });
+            return StatusCode(500, new { success = false, message = "Terjadi kesalahan pada server." });
         }
     }
 }
