@@ -2211,11 +2211,11 @@
   "project": {
     "version": "1.0.0",
     "restore": {
-      "projectUniqueName": "C:\\Users\\Lenovo\\MailDesk.Api\\MailDesk.Api.csproj",
+      "projectUniqueName": "C:\\Kuliah Elys\\MailDesk\\MailDesk.Api\\MailDesk.Api.csproj",
       "projectName": "MailDesk.Api",
-      "projectPath": "C:\\Users\\Lenovo\\MailDesk.Api\\MailDesk.Api.csproj",
+      "projectPath": "C:\\Kuliah Elys\\MailDesk\\MailDesk.Api\\MailDesk.Api.csproj",
       "packagesPath": "C:\\Users\\Lenovo\\.nuget\\packages\\",
-      "outputPath": "C:\\Users\\Lenovo\\MailDesk.Api\\obj\\",
+      "outputPath": "C:\\Kuliah Elys\\MailDesk\\MailDesk.Api\\obj\\",
       "projectStyle": "PackageReference",
       "configFilePaths": [
         "C:\\Users\\Lenovo\\AppData\\Roaming\\NuGet\\NuGet.Config"

@@ -13,7 +13,7 @@ using System.Reflection;
 [assembly: System.Reflection.AssemblyCompanyAttribute("MailDesk.Api")]
 [assembly: System.Reflection.AssemblyConfigurationAttribute("Debug")]
 [assembly: System.Reflection.AssemblyFileVersionAttribute("1.0.0.0")]
-[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.0+53ac3ed842e00c23bd8bd6bf7797c217ac62fe94")]
+[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.0+d1e16ef058514d7d404ab7095cbf35f6855415b5")]
 [assembly: System.Reflection.AssemblyProductAttribute("MailDesk.Api")]
 [assembly: System.Reflection.AssemblyTitleAttribute("MailDesk.Api")]
 [assembly: System.Reflection.AssemblyVersionAttribute("1.0.0.0")]
