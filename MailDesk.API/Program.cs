@@ -1,50 +1,26 @@
-using MailDesk.API.Data;
-using MailDesk.API.Services;
-using MailDesk.API.Services.Interfaces;
-using MailDesk.API.Helpers;
+using Maildesk.Api.Data;
+using Maildesk.Api.Services;
 using Microsoft.EntityFrameworkCore;
-
-// ── Timestamp Behavior ──────────────────────────────────────────────────────
-// Nonaktifkan konversi UTC otomatis Npgsql agar DateTime.Now (WIB) disimpan
-// dan dikembalikan sebagai waktu lokal, bukan dikonversi ke UTC.
-AppContext.SetSwitch("Npgsql.EnableLegacyTimestampBehavior", true);
 
 var builder = WebApplication.CreateBuilder(args);
 
-// ── Database ────────────────────────────────────────────────────────────────
-builder.Services.AddDbContext<AppDbContext>(options =>
-    options.UseNpgsql(builder.Configuration.GetConnectionString("DefaultConnection")));
-
-// ── Services ────────────────────────────────────────────────────────────────
-builder.Services.AddHttpContextAccessor();
-builder.Services.AddScoped<ISuratService, SuratService>();
-builder.Services.AddScoped<IDisposisiService, DisposisiService>();
-builder.Services.AddScoped<IUserService, UserService>();
-
-// ── Controllers & Swagger ───────────────────────────────────────────────────
 builder.Services.AddControllers();
 builder.Services.AddEndpointsApiExplorer();
-builder.Services.AddSwaggerGen(c =>
-{
-    c.SwaggerDoc("v1", new() 
-    { 
-        Title = "MailDesk API", 
-        Version = "v1",
-        Description = "Sistem Persuratan Digital — Sprint 1"
-    });
-    // Include XML comments untuk dokumentasi endpoint
-    var xmlFile = $"{System.Reflection.Assembly.GetExecutingAssembly().GetName().Name}.xml";
-    var xmlPath = Path.Combine(AppContext.BaseDirectory, xmlFile);
-    if (File.Exists(xmlPath)) c.IncludeXmlComments(xmlPath);
+builder.Services.AddSwaggerGen();
 
-    //IFormFile
-    c.OperationFilter<SwaggerFileOperationFilter>();
-});
+builder.Services.AddDbContext<MaildeskDbContext>(options =>
+    options.UseNpgsql(builder.Configuration.GetConnectionString("DefaultConnection")));
+
+builder.Services.AddScoped<SuratMasukService>();
+builder.Services.AddScoped<SuratKeluarService>();
 
 var app = builder.Build();
 
-// ── Middleware ───────────────────────────────────────────────────────────────
-app.UseStaticFiles();
+using (var scope = app.Services.CreateScope())
+{
+    var db = scope.ServiceProvider.GetRequiredService<MaildeskDbContext>();
+    await DbSeeder.SeedAsync(db);
+}
 
 if (app.Environment.IsDevelopment())
 {
@@ -55,4 +31,5 @@ if (app.Environment.IsDevelopment())
 app.UseHttpsRedirection();
 app.UseAuthorization();
 app.MapControllers();
+
 app.Run();

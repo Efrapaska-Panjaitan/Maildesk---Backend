@@ -1,6 +1,6 @@
-@MailDesk.API_HostAddress = http://localhost:5281
+@Maildesk.Api_HostAddress = http://localhost:5175
 
-GET {{MailDesk.API_HostAddress}}/weatherforecast/
+GET {{Maildesk.Api_HostAddress}}/weatherforecast/
 Accept: application/json
 
 ###

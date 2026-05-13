@@ -1,4 +1,4 @@
-using Microsoft.OpenApi.Models;
+using Microsoft.OpenApi;
 using Swashbuckle.AspNetCore.SwaggerGen;
 using System.Reflection;
 
@@ -38,14 +38,14 @@ public class SwaggerFileOperationFilter : IOperationFilter
                             {
                                 Schema = new OpenApiSchema
                                 {
-                                    Type = "object",
-                                    Properties = new Dictionary<string, OpenApiSchema>
+                                    Type = JsonSchemaType.Object,
+                                    Properties = new Dictionary<string, IOpenApiSchema>
                                     {
                                         {
                                             "file",
                                             new OpenApiSchema
                                             {
-                                                Type = "string",
+                                                Type = JsonSchemaType.String,
                                                 Format = "binary",
                                                 Description = "File PDF (maksimal 10MB)"
                                             }
