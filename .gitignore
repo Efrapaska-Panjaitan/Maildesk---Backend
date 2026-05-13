@@ -1,0 +1,22 @@
+# Environment
+.env
+
+# Build output
+**/bin/
+**/obj/
+
+# Logs
+*.log
+
+# VS / Rider
+.vs/
+.idea/
+*.user
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Uploads (file PDF)
+**/wwwroot/uploads/
+EOF

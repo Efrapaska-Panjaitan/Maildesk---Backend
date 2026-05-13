@@ -1,0 +1,262 @@
+using MailDesk.API.Data;
+using MailDesk.API.DTOs.Disposisi;
+using MailDesk.API.Entities;
+using MailDesk.API.Services.Interfaces;
+using Microsoft.EntityFrameworkCore;
+
+namespace MailDesk.API.Services;
+
+public class DisposisiService : IDisposisiService
+{
+    private readonly AppDbContext _context;
+    private readonly ILogger<DisposisiService> _logger;
+
+    private static readonly string[] RoleBisaDisposisi = { "Admin", "Pimpinan" };
+
+    public DisposisiService(AppDbContext context, ILogger<DisposisiService> logger)
+    {
+        _context = context;
+        _logger  = logger;
+    }
+
+    // ─────────────────────────────────────────────────────────
+    // CREATE DISPOSISI
+    // ─────────────────────────────────────────────────────────
+    public async Task<DisposisiDetailResponse> CreateDisposisiAsync(
+        CreateDisposisiRequest request)
+    {
+        var surat = await _context.Surats.FindAsync(request.SuratId)
+            ?? throw new KeyNotFoundException(
+                $"Surat ID {request.SuratId} tidak ditemukan.");
+
+        var pemberi = await _context.Users
+            .Include(u => u.Role)
+            .FirstOrDefaultAsync(u => u.Id == request.PemberiId)
+            ?? throw new KeyNotFoundException(
+                $"User pemberi ID {request.PemberiId} tidak ditemukan.");
+
+        if (!RoleBisaDisposisi.Contains(pemberi.Role?.NamaRole))
+            throw new UnauthorizedAccessException(
+                $"Role '{pemberi.Role?.NamaRole}' tidak memiliki izin membuat disposisi.");
+
+        var penerima = await _context.Users
+            .Include(u => u.Role)
+            .FirstOrDefaultAsync(u => u.Id == request.PenerimaId)
+            ?? throw new KeyNotFoundException(
+                $"User penerima ID {request.PenerimaId} tidak ditemukan.");
+
+        if (request.PemberiId == request.PenerimaId)
+            throw new InvalidOperationException(
+                "Tidak bisa membuat disposisi ke diri sendiri.");
+
+        var sifatValid = new[] { "Biasa", "Penting", "Mendesak", "Rahasia" };
+        if (!sifatValid.Contains(request.SifatDisposisi))
+            throw new InvalidOperationException(
+                $"Sifat tidak valid. Pilihan: {string.Join(", ", sifatValid)}");
+
+        var sudahAda = await _context.Disposisis
+            .AnyAsync(d =>
+                d.SuratId    == request.SuratId    &&
+                d.PenerimaId == request.PenerimaId &&
+                d.Status     != "Completed");
+
+        if (sudahAda)
+            throw new InvalidOperationException(
+                $"Sudah ada disposisi aktif ke {penerima.Nama} untuk surat ini.");
+
+        // Validasi parent jika ada
+        if (request.ParentDisposisiId.HasValue)
+        {
+            var parent = await _context.Disposisis
+                .FindAsync(request.ParentDisposisiId.Value)
+                ?? throw new KeyNotFoundException(
+                    $"Parent disposisi ID {request.ParentDisposisiId.Value} tidak ditemukan.");
+
+            if (parent.SuratId != request.SuratId)
+                throw new InvalidOperationException(
+                    "Parent disposisi tidak terkait dengan surat yang sama.");
+        }
+
+        var disposisi = new Disposisi
+        {
+            SuratId          = request.SuratId,
+            PemberiId        = request.PemberiId,
+            PenerimaId       = request.PenerimaId,
+            TanggalDisposisi = request.TanggalDisposisi,
+            SifatDisposisi   = request.SifatDisposisi,
+            Instruksi        = request.Instruksi,
+            Status           = "Pending",
+            CreatedAt        = DateTime.UtcNow
+        };
+
+        _context.Disposisis.Add(disposisi);
+        await _context.SaveChangesAsync();
+
+        // Simpan relasi chain
+        if (request.ParentDisposisiId.HasValue)
+        {
+            _context.DisposisiRelations.Add(new DisposisiRelation
+            {
+                ParentId  = request.ParentDisposisiId.Value,
+                ChildId   = disposisi.Id,
+                CreatedAt = DateTime.UtcNow
+            });
+            await _context.SaveChangesAsync();
+        }
+
+        _logger.LogInformation(
+            "Disposisi dibuat. ID: {Id}, {Pemberi} → {Penerima}",
+            disposisi.Id, pemberi.Nama, penerima.Nama);
+
+        return MapToDetail(disposisi, surat, pemberi, penerima,
+            request.ParentDisposisiId);
+    }
+
+    // ─────────────────────────────────────────────────────────
+    // GET LIST DISPOSISI
+    // ─────────────────────────────────────────────────────────
+    public async Task<IEnumerable<DisposisiListResponse>> GetDisposisiListAsync(
+        int? userId)
+    {
+        var query = _context.Disposisis
+            .Include(d => d.Surat)
+            .Include(d => d.Pemberi)
+            .Include(d => d.Penerima)
+            .AsQueryable();
+
+        if (userId.HasValue)
+            query = query.Where(d =>
+                d.PemberiId  == userId.Value ||
+                d.PenerimaId == userId.Value);
+
+        return await query
+            .OrderByDescending(d => d.CreatedAt)
+            .Select(d => new DisposisiListResponse
+            {
+                Id               = d.Id,
+                SuratId          = d.SuratId,
+                NoSurat          = d.Surat != null ? d.Surat.NoSurat : null,
+                PerihalSurat     = d.Surat != null ? d.Surat.Perihal : string.Empty,
+                NamaPemberi      = d.Pemberi != null ? d.Pemberi.Nama : string.Empty,
+                NamaPenerima     = d.Penerima != null ? d.Penerima.Nama : string.Empty,
+                TanggalDisposisi = d.TanggalDisposisi,
+                SifatDisposisi   = d.SifatDisposisi,
+                Status           = d.Status,
+                HasLampiranSurat = d.Surat != null && d.Surat.NamaFile != null,
+                CreatedAt        = d.CreatedAt
+            })
+            .ToListAsync();
+    }
+
+    // ─────────────────────────────────────────────────────────
+    // GET DETAIL DISPOSISI
+    // ─────────────────────────────────────────────────────────
+    public async Task<DisposisiDetailResponse> GetDisposisiByIdAsync(int id)
+    {
+        var d = await _context.Disposisis
+            .Include(d => d.Surat)
+            .Include(d => d.Pemberi).ThenInclude(u => u.Role)
+            .Include(d => d.Penerima).ThenInclude(u => u.Role)
+            .FirstOrDefaultAsync(d => d.Id == id)
+            ?? throw new KeyNotFoundException(
+                $"Disposisi ID {id} tidak ditemukan.");
+
+        var relasiParent = await _context.DisposisiRelations
+            .FirstOrDefaultAsync(r => r.ChildId == id);
+
+        return MapToDetail(d, d.Surat, d.Pemberi, d.Penerima, relasiParent?.ParentId);
+    }
+
+    // ─────────────────────────────────────────────────────────
+    // GET TRACKING
+    // ─────────────────────────────────────────────────────────
+    public async Task<DisposisiTrackingResponse> GetTrackingBySuratIdAsync(int suratId)
+    {
+        var surat = await _context.Surats.FindAsync(suratId)
+            ?? throw new KeyNotFoundException(
+                $"Surat ID {suratId} tidak ditemukan.");
+
+        var semuaDisposisi = await _context.Disposisis
+            .Include(d => d.Pemberi).ThenInclude(u => u.Role)
+            .Include(d => d.Penerima).ThenInclude(u => u.Role)
+            .Where(d => d.SuratId == suratId)
+            .OrderBy(d => d.CreatedAt)
+            .ToListAsync();
+
+        // Kumpulkan ID semua disposisi
+        var disposisiIds = semuaDisposisi.Select(d => d.Id).ToList();
+
+        // Ambil ParentId dari relasi — hasilnya List<int>
+        var parentIds = await _context.DisposisiRelations
+            .Where(r => disposisiIds.Contains(r.ParentId))
+            .Select(r => r.ParentId)
+            .ToListAsync();
+
+        // HashSet<int> untuk lookup O(1)
+        var punyaChild = parentIds.ToHashSet();
+
+        var riwayat = semuaDisposisi.Select((d, index) => new TrackingStep
+        {
+            StepOrder      = index + 1,
+            DisposisiId    = d.Id,
+            NamaPemberi    = d.Pemberi?.Nama ?? string.Empty,
+            RolePemberi    = d.Pemberi?.Role?.NamaRole,
+            NamaPenerima   = d.Penerima?.Nama ?? string.Empty,
+            RolePenerima   = d.Penerima?.Role?.NamaRole,
+            SifatDisposisi = d.SifatDisposisi,
+            Instruksi      = d.Instruksi,
+            Status         = d.Status,
+            Waktu          = d.CreatedAt,
+            IsPosisiTerkini = !punyaChild.Contains(d.Id)  // ← d adalah Disposisi, d.Id adalah int
+        }).ToList();
+
+        var posisiTerkini = riwayat.LastOrDefault(s => s.IsPosisiTerkini);
+
+        return new DisposisiTrackingResponse
+        {
+            SuratId           = suratId,
+            NoSurat           = surat.NoSurat,
+            PerihalSurat      = surat.Perihal,
+            NamaFile          = surat.NamaFile,
+            PosisiTerkini     = posisiTerkini?.NamaPenerima ?? "-",
+            RolePosisiTerkini = posisiTerkini?.RolePenerima,
+            StatusTerkini     = posisiTerkini?.Status ?? "-",
+            Riwayat           = riwayat
+        };
+    }
+
+    // ─────────────────────────────────────────────────────────
+    // HELPER — MapToDetail
+    // ─────────────────────────────────────────────────────────
+    private static DisposisiDetailResponse MapToDetail(
+        Disposisi d,
+        Surat? surat,
+        User? pemberi,
+        User? penerima,
+        int? parentId)
+    {
+        return new DisposisiDetailResponse
+        {
+            Id               = d.Id,
+            SuratId          = d.SuratId,
+            NoSurat          = surat?.NoSurat,
+            PerihalSurat     = surat?.Perihal ?? string.Empty,
+            NamaFile         = surat?.NamaFile,
+            HasLampiran      = surat?.NamaFile != null,
+            PemberiId        = d.PemberiId,
+            NamaPemberi      = pemberi?.Nama ?? string.Empty,
+            RolePemberi      = pemberi?.Role?.NamaRole,
+            PenerimaId       = d.PenerimaId,
+            NamaPenerima     = penerima?.Nama ?? string.Empty,
+            RolePenerima     = penerima?.Role?.NamaRole,
+            TanggalDisposisi = d.TanggalDisposisi,
+            SifatDisposisi   = d.SifatDisposisi,
+            Instruksi        = d.Instruksi,
+            Status           = d.Status,
+            WaktuDiterima    = d.WaktuDiterima,
+            CompletedAt      = d.CompletedAt,
+            CreatedAt        = d.CreatedAt,
+            ParentDisposisiId = parentId
+        };
+    }
+}

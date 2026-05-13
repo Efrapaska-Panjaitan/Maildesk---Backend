@@ -1,0 +1,34 @@
+namespace MailDesk.API.DTOs.Surat;
+
+public class SuratResponse
+{
+    public int Id { get; set; }
+    public string? NoSurat { get; set; } 
+    public string NomorAgenda { get; set; } = string.Empty;
+    public string JenisSurat { get; set; } = string.Empty;
+    public string? KategoriSurat { get; set; }
+    public DateOnly TanggalSurat { get; set; }
+    public string Pengirim { get; set; } = string.Empty;
+    public string Penerima { get; set; } = string.Empty;
+    public string Perihal { get; set; } = string.Empty;
+    public string Status { get; set; } = string.Empty;
+    public bool IsArchived { get; set; }
+
+    /// <summary>Nama TU/Sekretaris yang mencatat surat.</summary>
+    public string? PencatatNama { get; set; }
+
+    /// <summary>ID Pimpinan yang dituju TU/Sekretaris untuk disposisi.</summary>
+    public int? DitujukanKeId { get; set; }
+
+    /// <summary>Nama Pimpinan yang dituju TU/Sekretaris untuk disposisi.</summary>
+    public string? DitujukanKeNama { get; set; }
+
+    /// <summary>Path relatif file PDF (contoh: uploads/surat/2026/05/{uuid}.pdf). Null jika belum ada lampiran.</summary>
+    public string? NamaFile { get; set; }
+
+    /// <summary>URL lengkap untuk mengakses file PDF. Null jika belum ada lampiran.</summary>
+    public string? FileUrl { get; set; }
+
+    public bool HasLampiran => NamaFile != null;
+    public DateTime CreatedAt { get; set; }
+}

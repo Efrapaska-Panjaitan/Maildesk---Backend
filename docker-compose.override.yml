@@ -1,0 +1,16 @@
+# File ini otomatis di-merge saat `docker compose up` di local dev.
+# JANGAN dipakai di production.
+
+services:
+
+  postgres:
+    # Expose pgAdmin / DBeaver bisa connect langsung
+    ports:
+      - "5433:5432"
+
+  api:
+    # Hot-reload saat development (mount source code)
+    environment:
+      ASPNETCORE_ENVIRONMENT: Development
+    #volumes:
+     # - ./MailDesk.API:/app/src       # opsional, untuk dev workflow
