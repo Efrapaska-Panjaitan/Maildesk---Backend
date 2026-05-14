@@ -1,8 +1,6 @@
+﻿
 Microsoft Visual Studio Solution File, Format Version 12.00
-# Visual Studio Version 17
-VisualStudioVersion = 17.5.2.0
-MinimumVisualStudioVersion = 10.0.40219.1
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "MailDesk.Api", "MailDesk.Api.csproj", "{7044A941-6BEE-5FF8-E584-840E41DBFBC7}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "MailDesk.API", "MailDesk.API.csproj", "{0F7E73E3-4DD5-4405-9EE7-F4A5A4A1E067}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
@@ -10,15 +8,9 @@ Global
 		Release|Any CPU = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(ProjectConfigurationPlatforms) = postSolution
-		{7044A941-6BEE-5FF8-E584-840E41DBFBC7}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
-		{7044A941-6BEE-5FF8-E584-840E41DBFBC7}.Debug|Any CPU.Build.0 = Debug|Any CPU
-		{7044A941-6BEE-5FF8-E584-840E41DBFBC7}.Release|Any CPU.ActiveCfg = Release|Any CPU
-		{7044A941-6BEE-5FF8-E584-840E41DBFBC7}.Release|Any CPU.Build.0 = Release|Any CPU
-	EndGlobalSection
-	GlobalSection(SolutionProperties) = preSolution
-		HideSolutionNode = FALSE
-	EndGlobalSection
-	GlobalSection(ExtensibilityGlobals) = postSolution
-		SolutionGuid = {D0D5D755-1CB2-42FB-891A-5543D59E09C1}
+		{0F7E73E3-4DD5-4405-9EE7-F4A5A4A1E067}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{0F7E73E3-4DD5-4405-9EE7-F4A5A4A1E067}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{0F7E73E3-4DD5-4405-9EE7-F4A5A4A1E067}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{0F7E73E3-4DD5-4405-9EE7-F4A5A4A1E067}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 EndGlobal

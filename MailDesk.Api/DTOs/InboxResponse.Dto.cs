@@ -1,4 +1,4 @@
-namespace MailDesk.Api.DTOs;
+namespace MailDesk.API.DTOs;
 
 public class InboxResponseDto
 {

@@ -1,9 +1,10 @@
-using MailDesk.Api.Models;
-using MailDesk.Api.DTOs;
+using MailDesk.API.Data;
+using MailDesk.API.DTOs;
+using MailDesk.API.Entities;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 
-namespace MailDesk.Api.Controllers;
+namespace MailDesk.API.Controllers;
 
 [ApiController]
 [Route("api/[controller]")]
