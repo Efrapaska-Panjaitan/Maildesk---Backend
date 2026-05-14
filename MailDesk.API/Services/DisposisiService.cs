@@ -86,7 +86,7 @@ public class DisposisiService : IDisposisiService
             SifatDisposisi   = request.SifatDisposisi,
             Instruksi        = request.Instruksi,
             Status           = "Pending",
-            CreatedAt        = DateTime.UtcNow
+            CreatedAt        = DateTime.Now  // WIB
         };
 
         _context.Disposisis.Add(disposisi);
@@ -99,7 +99,7 @@ public class DisposisiService : IDisposisiService
             {
                 ParentId  = request.ParentDisposisiId.Value,
                 ChildId   = disposisi.Id,
-                CreatedAt = DateTime.UtcNow
+                CreatedAt = DateTime.Now  // WIB
             });
             await _context.SaveChangesAsync();
         }
@@ -107,6 +107,16 @@ public class DisposisiService : IDisposisiService
         _logger.LogInformation(
             "Disposisi dibuat. ID: {Id}, {Pemberi} → {Penerima}",
             disposisi.Id, pemberi.Nama, penerima.Nama);
+
+        // Tulis log otomatis saat disposisi baru dibuat
+        await AddLogAsync(
+            disposisiId : disposisi.Id,
+            suratId     : disposisi.SuratId,
+            userId      : request.PemberiId,
+            aksi        : "DIBUAT",
+            statusLama  : null,
+            statusBaru  : disposisi.Status,
+            keterangan  : null);
 
         return MapToDetail(disposisi, surat, pemberi, penerima,
             request.ParentDisposisiId);
@@ -258,5 +268,177 @@ public class DisposisiService : IDisposisiService
             CreatedAt        = d.CreatedAt,
             ParentDisposisiId = parentId
         };
+    }
+
+    // ─────────────────────────────────────────────────────────
+    // HELPER — AddLogAsync (private, dipanggil tiap ada perubahan status)
+    // ─────────────────────────────────────────────────────────
+    private async Task AddLogAsync(
+        int disposisiId, int suratId, int? userId,
+        string aksi, string? statusLama, string? statusBaru, string? keterangan)
+    {
+        _context.DisposisiLogs.Add(new DisposisiLog
+        {
+            DisposisiId = disposisiId,
+            SuratId     = suratId,
+            UserId      = userId,
+            Aksi        = aksi,
+            StatusLama  = statusLama,
+            StatusBaru  = statusBaru,
+            Keterangan  = keterangan,
+            CreatedAt   = DateTime.Now
+        });
+        await _context.SaveChangesAsync();
+    }
+
+    // ─────────────────────────────────────────────────────────
+    // TERIMA DISPOSISI (Pending → Accepted)
+    // ─────────────────────────────────────────────────────────
+    public async Task<DisposisiDetailResponse> TerimaDisposisiAsync(
+        int disposisiId, UpdateDisposisiStatusRequest request)
+    {
+        var disposisi = await _context.Disposisis
+            .Include(d => d.Surat)
+            .Include(d => d.Pemberi).ThenInclude(u => u.Role)
+            .Include(d => d.Penerima).ThenInclude(u => u.Role)
+            .FirstOrDefaultAsync(d => d.Id == disposisiId)
+            ?? throw new KeyNotFoundException(
+                $"Disposisi ID {disposisiId} tidak ditemukan.");
+
+        if (disposisi.Status != "Pending")
+            throw new InvalidOperationException(
+                $"Disposisi sudah dalam status '{disposisi.Status}'. Hanya disposisi berstatus Pending yang bisa diterima.");
+
+        // Pastikan yang menerima adalah penerima disposisi
+        if (disposisi.PenerimaId != request.UserId)
+            throw new UnauthorizedAccessException(
+                "Hanya penerima disposisi yang dapat menerima disposisi ini.");
+
+        var statusLama = disposisi.Status;
+        disposisi.Status       = "Accepted";
+        disposisi.WaktuDiterima = DateTime.Now;
+        await _context.SaveChangesAsync();
+
+        await AddLogAsync(
+            disposisiId : disposisi.Id,
+            suratId     : disposisi.SuratId,
+            userId      : request.UserId,
+            aksi        : "DITERIMA",
+            statusLama  : statusLama,
+            statusBaru  : disposisi.Status,
+            keterangan  : request.Keterangan);
+
+        _logger.LogInformation(
+            "Disposisi ID {Id} diterima oleh UserID {UserId}.",
+            disposisiId, request.UserId);
+
+        var relasiParent = await _context.DisposisiRelations
+            .FirstOrDefaultAsync(r => r.ChildId == disposisiId);
+
+        return MapToDetail(disposisi, disposisi.Surat, disposisi.Pemberi,
+            disposisi.Penerima, relasiParent?.ParentId);
+    }
+
+    // ─────────────────────────────────────────────────────────
+    // SELESAIKAN DISPOSISI (Accepted → Completed)
+    // ─────────────────────────────────────────────────────────
+    public async Task<DisposisiDetailResponse> SelesaikanDisposisiAsync(
+        int disposisiId, UpdateDisposisiStatusRequest request)
+    {
+        var disposisi = await _context.Disposisis
+            .Include(d => d.Surat)
+            .Include(d => d.Pemberi).ThenInclude(u => u.Role)
+            .Include(d => d.Penerima).ThenInclude(u => u.Role)
+            .FirstOrDefaultAsync(d => d.Id == disposisiId)
+            ?? throw new KeyNotFoundException(
+                $"Disposisi ID {disposisiId} tidak ditemukan.");
+
+        if (disposisi.Status != "Accepted")
+            throw new InvalidOperationException(
+                $"Disposisi dalam status '{disposisi.Status}'. Hanya disposisi berstatus Accepted yang bisa diselesaikan.");
+
+        if (disposisi.PenerimaId != request.UserId)
+            throw new UnauthorizedAccessException(
+                "Hanya penerima disposisi yang dapat menyelesaikan disposisi ini.");
+
+        var statusLama = disposisi.Status;
+        disposisi.Status      = "Completed";
+        disposisi.CompletedAt = DateTime.Now;
+        await _context.SaveChangesAsync();
+
+        await AddLogAsync(
+            disposisiId : disposisi.Id,
+            suratId     : disposisi.SuratId,
+            userId      : request.UserId,
+            aksi        : "DISELESAIKAN",
+            statusLama  : statusLama,
+            statusBaru  : disposisi.Status,
+            keterangan  : request.Keterangan);
+
+        _logger.LogInformation(
+            "Disposisi ID {Id} diselesaikan oleh UserID {UserId}.",
+            disposisiId, request.UserId);
+
+        var relasiParent = await _context.DisposisiRelations
+            .FirstOrDefaultAsync(r => r.ChildId == disposisiId);
+
+        return MapToDetail(disposisi, disposisi.Surat, disposisi.Pemberi,
+            disposisi.Penerima, relasiParent?.ParentId);
+    }
+
+    // ─────────────────────────────────────────────────────────
+    // GET LOG BY DISPOSISI ID
+    // ─────────────────────────────────────────────────────────
+    public async Task<IEnumerable<DisposisiLogResponse>> GetLogByDisposisiIdAsync(int disposisiId)
+    {
+        var exists = await _context.Disposisis.AnyAsync(d => d.Id == disposisiId);
+        if (!exists)
+            throw new KeyNotFoundException($"Disposisi ID {disposisiId} tidak ditemukan.");
+
+        return await _context.DisposisiLogs
+            .Include(l => l.User)
+            .Where(l => l.DisposisiId == disposisiId)
+            .OrderBy(l => l.CreatedAt)
+            .Select(l => new DisposisiLogResponse
+            {
+                Id           = l.Id,
+                DisposisiId  = l.DisposisiId,
+                SuratId      = l.SuratId,
+                NamaUser     = l.User != null ? l.User.Nama : null,
+                Aksi         = l.Aksi,
+                StatusLama   = l.StatusLama,
+                StatusBaru   = l.StatusBaru,
+                Keterangan   = l.Keterangan,
+                CreatedAt    = l.CreatedAt
+            })
+            .ToListAsync();
+    }
+
+    // ─────────────────────────────────────────────────────────
+    // GET LOG BY SURAT ID
+    // ─────────────────────────────────────────────────────────
+    public async Task<IEnumerable<DisposisiLogResponse>> GetLogBySuratIdAsync(int suratId)
+    {
+        var exists = await _context.Surats.AnyAsync(s => s.Id == suratId);
+        if (!exists)
+            throw new KeyNotFoundException($"Surat ID {suratId} tidak ditemukan.");
+
+        return await _context.DisposisiLogs
+            .Include(l => l.User)
+            .Where(l => l.SuratId == suratId)
+            .OrderBy(l => l.CreatedAt)
+            .Select(l => new DisposisiLogResponse
+            {
+                Id           = l.Id,
+                DisposisiId  = l.DisposisiId,
+                SuratId      = l.SuratId,
+                NamaUser     = l.User != null ? l.User.Nama : null,
+                Aksi         = l.Aksi,
+                StatusLama   = l.StatusLama,
+                StatusBaru   = l.StatusBaru,
+                Keterangan   = l.Keterangan,
+                CreatedAt    = l.CreatedAt
+            })
+            .ToListAsync();
     }
 }

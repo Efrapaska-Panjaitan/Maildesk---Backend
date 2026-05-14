@@ -1,9 +1,12 @@
 using Microsoft.OpenApi.Models;
 using Swashbuckle.AspNetCore.SwaggerGen;
-using System.Reflection;
 
 namespace MailDesk.API.Helpers;
 
+/// <summary>
+/// Filter Swagger untuk menampilkan field file upload (IFormFile) dengan benar.
+/// Kompatibel dengan Swashbuckle.AspNetCore 6.x (Microsoft.OpenApi v1.x).
+/// </summary>
 public class SwaggerFileOperationFilter : IOperationFilter
 {
     public void Apply(OpenApiOperation operation, OperationFilterContext context)
@@ -23,11 +26,9 @@ public class SwaggerFileOperationFilter : IOperationFilter
                     .ToList();
 
                 foreach (var param in formFileParams)
-                {
                     operation.Parameters.Remove(param);
-                }
 
-                // Tambah parameter file yang benar
+                // Tambah request body multipart yang benar
                 operation.RequestBody = new OpenApiRequestBody
                 {
                     Content = new Dictionary<string, OpenApiMediaType>
@@ -45,8 +46,8 @@ public class SwaggerFileOperationFilter : IOperationFilter
                                             "file",
                                             new OpenApiSchema
                                             {
-                                                Type = "string",
-                                                Format = "binary",
+                                                Type        = "string",
+                                                Format      = "binary",
                                                 Description = "File PDF (maksimal 10MB)"
                                             }
                                         }

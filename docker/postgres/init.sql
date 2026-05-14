@@ -33,7 +33,8 @@ CREATE TABLE IF NOT EXISTS surat (
     perihal         TEXT NOT NULL,
     isi_teks_ocr    TEXT,
     file_lampiran   BYTEA,
-    nama_file       VARCHAR(255),
+    nama_file       VARCHAR(255),           -- nama asli file dari pengirim (untuk display)
+    file_path       VARCHAR(500),           -- path relatif di disk (uploads/surat/YYYY/MM/{uuid}.pdf)
     status          VARCHAR(20) DEFAULT 'Baru'
                     CHECK (status IN ('Baru', 'Diproses', 'Selesai')),
     is_archived     BOOLEAN DEFAULT FALSE,
@@ -94,4 +95,20 @@ CREATE TABLE IF NOT EXISTS disposisi_relation (
     child_id    INT NOT NULL REFERENCES disposisi(id) ON DELETE RESTRICT,
     created_at  TIMESTAMP DEFAULT NOW(),
     UNIQUE (child_id)   -- satu child hanya boleh punya satu parent
+);
+
+-- ─────────────────────────────────────────────────
+-- DISPOSISI LOG (history setiap perubahan status)
+-- ─────────────────────────────────────────────────
+CREATE TABLE IF NOT EXISTS disposisi_log (
+    id              SERIAL PRIMARY KEY,
+    disposisi_id    INT NOT NULL REFERENCES disposisi(id) ON DELETE CASCADE,
+    surat_id        INT NOT NULL REFERENCES surat(id)    ON DELETE CASCADE,
+    user_id         INT REFERENCES users(id)             ON DELETE SET NULL,
+    aksi            VARCHAR(50) NOT NULL
+                    CHECK (aksi IN ('DIBUAT', 'DITERIMA', 'DISELESAIKAN')),
+    status_lama     VARCHAR(50),
+    status_baru     VARCHAR(50),
+    keterangan      TEXT,
+    created_at      TIMESTAMP NOT NULL DEFAULT NOW()
 );

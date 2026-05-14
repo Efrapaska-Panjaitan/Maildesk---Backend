@@ -9,4 +9,10 @@ public interface IDisposisiService
     Task<IEnumerable<DisposisiListResponse>> GetDisposisiListAsync(int? userId);
     Task<DisposisiDetailResponse> GetDisposisiByIdAsync(int id);
     Task<DisposisiTrackingResponse> GetTrackingBySuratIdAsync(int suratId);
+
+    // Task 5 — History Log
+    Task<DisposisiDetailResponse> TerimaDisposisiAsync(int disposisiId, UpdateDisposisiStatusRequest request);
+    Task<DisposisiDetailResponse> SelesaikanDisposisiAsync(int disposisiId, UpdateDisposisiStatusRequest request);
+    Task<IEnumerable<DisposisiLogResponse>> GetLogByDisposisiIdAsync(int disposisiId);
+    Task<IEnumerable<DisposisiLogResponse>> GetLogBySuratIdAsync(int suratId);
 }

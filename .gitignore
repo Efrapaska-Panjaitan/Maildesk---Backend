@@ -20,3 +20,10 @@ Thumbs.db
 # Uploads (file PDF)
 **/wwwroot/uploads/
 EOF
+bin/
+obj/
+.vs/
+.vscode/
+appsettings.Development.json
+*.user
+*.suo

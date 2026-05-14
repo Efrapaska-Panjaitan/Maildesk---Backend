@@ -44,7 +44,7 @@ public class Disposisi
     */
 
     [Column("created_at")]
-    public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
+    public DateTime CreatedAt { get; set; } = DateTime.Now;
 
     //diisi saat penerima klik "Terima Disposisi"
     [Column("waktu_diterima")]

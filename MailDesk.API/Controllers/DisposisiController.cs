@@ -179,4 +179,130 @@ public class DisposisiController : ControllerBase
             });
         }
     }
+
+    // ─────────────────────────────────────────────────────────
+    // PATCH /api/disposisi/{id}/terima
+    // Penerima klik "Terima Disposisi" — Pending → Accepted
+    // ─────────────────────────────────────────────────────────
+    /// <summary>
+    /// Penerima disposisi menerima lembar disposisi (Pending → Accepted).
+    /// Otomatis mencatat waktu diterima dan menulis entri log DITERIMA.
+    /// </summary>
+    [HttpPatch("{id}/terima")]
+    [ProducesResponseType(typeof(DisposisiDetailResponse), StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(StatusCodes.Status403Forbidden)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    public async Task<IActionResult> TerimaDisposisi(
+        [FromRoute] int id,
+        [FromBody] UpdateDisposisiStatusRequest request)
+    {
+        if (!ModelState.IsValid)
+            return BadRequest(new
+            {
+                success = false,
+                errors  = ModelState.Values.SelectMany(v => v.Errors).Select(e => e.ErrorMessage)
+            });
+
+        try
+        {
+            var result = await _disposisiService.TerimaDisposisiAsync(id, request);
+            return Ok(new { success = true, message = "Disposisi berhasil diterima.", data = result });
+        }
+        catch (KeyNotFoundException ex)        { return NotFound(new { success = false, message = ex.Message }); }
+        catch (UnauthorizedAccessException ex) { return StatusCode(403, new { success = false, message = ex.Message }); }
+        catch (InvalidOperationException ex)   { return BadRequest(new { success = false, message = ex.Message }); }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error saat terima disposisi ID: {Id}", id);
+            return StatusCode(500, new { success = false, message = "Terjadi kesalahan pada server." });
+        }
+    }
+
+    // ─────────────────────────────────────────────────────────
+    // PATCH /api/disposisi/{id}/selesai
+    // Penerima klik "Selesai" — Accepted → Completed
+    // ─────────────────────────────────────────────────────────
+    /// <summary>
+    /// Penerima disposisi menandai tugas selesai (Accepted → Completed).
+    /// Otomatis mencatat waktu selesai dan menulis entri log DISELESAIKAN.
+    /// </summary>
+    [HttpPatch("{id}/selesai")]
+    [ProducesResponseType(typeof(DisposisiDetailResponse), StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(StatusCodes.Status403Forbidden)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    public async Task<IActionResult> SelesaikanDisposisi(
+        [FromRoute] int id,
+        [FromBody] UpdateDisposisiStatusRequest request)
+    {
+        if (!ModelState.IsValid)
+            return BadRequest(new
+            {
+                success = false,
+                errors  = ModelState.Values.SelectMany(v => v.Errors).Select(e => e.ErrorMessage)
+            });
+
+        try
+        {
+            var result = await _disposisiService.SelesaikanDisposisiAsync(id, request);
+            return Ok(new { success = true, message = "Disposisi berhasil diselesaikan.", data = result });
+        }
+        catch (KeyNotFoundException ex)        { return NotFound(new { success = false, message = ex.Message }); }
+        catch (UnauthorizedAccessException ex) { return StatusCode(403, new { success = false, message = ex.Message }); }
+        catch (InvalidOperationException ex)   { return BadRequest(new { success = false, message = ex.Message }); }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error saat selesaikan disposisi ID: {Id}", id);
+            return StatusCode(500, new { success = false, message = "Terjadi kesalahan pada server." });
+        }
+    }
+
+    // ─────────────────────────────────────────────────────────
+    // GET /api/disposisi/{id}/log
+    // ─────────────────────────────────────────────────────────
+    /// <summary>
+    /// Get riwayat perubahan status satu disposisi (DIBUAT → DITERIMA → DISELESAIKAN).
+    /// </summary>
+    [HttpGet("{id}/log")]
+    [ProducesResponseType(typeof(IEnumerable<DisposisiLogResponse>), StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    public async Task<IActionResult> GetLogByDisposisi([FromRoute] int id)
+    {
+        try
+        {
+            var result = await _disposisiService.GetLogByDisposisiIdAsync(id);
+            return Ok(new { success = true, totalData = result.Count(), data = result });
+        }
+        catch (KeyNotFoundException ex) { return NotFound(new { success = false, message = ex.Message }); }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error saat get log disposisi ID: {Id}", id);
+            return StatusCode(500, new { success = false, message = "Terjadi kesalahan pada server." });
+        }
+    }
+
+    // ─────────────────────────────────────────────────────────
+    // GET /api/disposisi/surat/{suratId}/log
+    // ─────────────────────────────────────────────────────────
+    /// <summary>
+    /// Get semua riwayat log disposisi untuk satu surat — full timeline perjalanan surat.
+    /// </summary>
+    [HttpGet("surat/{suratId}/log")]
+    [ProducesResponseType(typeof(IEnumerable<DisposisiLogResponse>), StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    public async Task<IActionResult> GetLogBySurat([FromRoute] int suratId)
+    {
+        try
+        {
+            var result = await _disposisiService.GetLogBySuratIdAsync(suratId);
+            return Ok(new { success = true, totalData = result.Count(), data = result });
+        }
+        catch (KeyNotFoundException ex) { return NotFound(new { success = false, message = ex.Message }); }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error saat get log surat ID: {Id}", suratId);
+            return StatusCode(500, new { success = false, message = "Terjadi kesalahan pada server." });
+        }
+    }
 }

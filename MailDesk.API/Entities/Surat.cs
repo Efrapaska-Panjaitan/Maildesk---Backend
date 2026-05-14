@@ -49,10 +49,19 @@ public class Surat
     [Column("file_lampiran")]
     public byte[]? FileLampiran { get; set; }
 
-    // Nama file asli dari pengirim
+    /// <summary>Nama asli file PDF dari pengirim (untuk display di UI).</summary>
     [Column("nama_file")]
     [MaxLength(255)]
     public string? NamaFile { get; set; }
+
+    /// <summary>
+    /// Path relatif file PDF di disk storage.
+    /// Format: uploads/surat/YYYY/MM/{uuid}.pdf
+    /// Digunakan untuk konstruksi FileUrl di layer API.
+    /// </summary>
+    [Column("file_path")]
+    [MaxLength(500)]
+    public string? FilePath { get; set; }
 
     // default 'Baru'
     [Column("status")]
@@ -76,7 +85,7 @@ public class Surat
     public int? DitujukanKeId { get; set; }
 
     [Column("created_at")]
-    public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
+    public DateTime CreatedAt { get; set; } = DateTime.Now;
 
     // Navigation properties
     /// <summary>TU/Sekretaris pencatat surat.</summary>

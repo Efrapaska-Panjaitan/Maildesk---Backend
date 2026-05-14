@@ -23,66 +23,65 @@ public class SuratService : ISuratService
         _httpContextAccessor = httpContextAccessor;
     }
 
-    public async Task<SuratResponse> CreateSuratMasukAsync(CreateSuratRequest request)
+    // ─────────────────────────────────────────────────────────
+    // CREATE SURAT MASUK + upload PDF wajib (kode Efrapaska)
+    // ─────────────────────────────────────────────────────────
+    public async Task<SuratResponse> CreateSuratMasukAsync(CreateSuratRequest request, IFormFile file)
     {
-        // Validasi duplikat no_surat
+        // ── Validasi duplikat no_surat ────────────────────────
         var isDuplicate = await _context.Surats
-            .AnyAsync(s => s.NoSurat == request.NoSurat
-                        && s.JenisSurat == "Masuk");
+            .AnyAsync(s => s.NoSurat == request.NoSurat && s.JenisSurat == "Masuk");
 
         if (isDuplicate)
             throw new InvalidOperationException(
                 $"Surat dengan nomor '{request.NoSurat}' sudah pernah dicatat.");
 
-        // ── Generate nomor agenda ─────────────────────────────────
-        string nomorAgenda;
-        var now = DateTime.Now;
-
-        // Jika frontend kirim preview dan belum dipakai, gunakan itu
-        if (!string.IsNullOrEmpty(request.NomorAgendaPreview))
-        {
-            var isPreviewSudahDipakai = await _context.Surats
-                .AnyAsync(s => s.NomorAgenda == request.NomorAgendaPreview);
-
-            if (!isPreviewSudahDipakai)
-            {
-                // Preview masih available → gunakan nomor agenda dari preview
-                nomorAgenda = request.NomorAgendaPreview;
-                _logger.LogInformation(
-                    "Menggunakan nomor agenda dari preview: {NomorAgenda}", nomorAgenda);
-            }
-            else
-            {
-                // Preview sudah dipakai orang lain → generate nomor baru
-                var jumlahBulanIni = await _context.Surats
-                    .CountAsync(s => s.CreatedAt.Month == now.Month
-                                && s.CreatedAt.Year == now.Year);
-
-                nomorAgenda = NomorAgendaHelper.Generate(jumlahBulanIni + 1);
-
-                _logger.LogWarning(
-                    "Preview {Preview} sudah dipakai. Nomor baru: {NomorAgenda}",
-                    request.NomorAgendaPreview, nomorAgenda);
-            }
-        }
-        else
-        {
-            // Frontend tidak kirim preview → generate seperti biasa
-            var jumlahBulanIni = await _context.Surats
-                .CountAsync(s => s.CreatedAt.Month == now.Month
-                            && s.CreatedAt.Year == now.Year);
-
-            nomorAgenda = NomorAgendaHelper.Generate(jumlahBulanIni + 1);
-        }
-
-        // Validasi: DitujukanKeId harus merujuk ke user yang ada
+        // ── Validasi DitujukanKe ──────────────────────────────
         var ditujukanKeExists = await _context.Users
             .AnyAsync(u => u.Id == request.DitujukanKeId);
         if (!ditujukanKeExists)
             throw new KeyNotFoundException(
                 $"User dengan ID {request.DitujukanKeId} (penerima tujuan) tidak ditemukan.");
 
-        // Buat entitas baru
+        // ── Generate nomor agenda ─────────────────────────────
+        string nomorAgenda;
+        var now = DateTime.Now;
+
+        if (!string.IsNullOrEmpty(request.NomorAgendaPreview)
+            && NomorAgendaHelper.IsValidFormat(request.NomorAgendaPreview))
+        {
+            var isPreviewSudahDipakai = await _context.Surats
+                .AnyAsync(s => s.NomorAgenda == request.NomorAgendaPreview);
+
+            if (!isPreviewSudahDipakai)
+            {
+                nomorAgenda = request.NomorAgendaPreview;
+                _logger.LogInformation("Menggunakan nomor agenda dari preview: {NomorAgenda}", nomorAgenda);
+            }
+            else
+            {
+                var jumlah = await _context.Surats
+                    .CountAsync(s => s.JenisSurat == "Masuk"
+                                  && s.CreatedAt.Month == now.Month
+                                  && s.CreatedAt.Year == now.Year);
+                nomorAgenda = NomorAgendaHelper.Generate("Masuk", jumlah + 1);
+                _logger.LogWarning("Preview {Preview} sudah dipakai. Nomor baru: {NomorAgenda}",
+                    request.NomorAgendaPreview, nomorAgenda);
+            }
+        }
+        else
+        {
+            var jumlah = await _context.Surats
+                .CountAsync(s => s.JenisSurat == "Masuk"
+                              && s.CreatedAt.Month == now.Month
+                              && s.CreatedAt.Year == now.Year);
+            nomorAgenda = NomorAgendaHelper.Generate("Masuk", jumlah + 1);
+        }
+
+        // ── Simpan file PDF ───────────────────────────────────
+        var (namaFile, filePath) = await SavePdfToDiskAsync(file);
+
+        // ── Buat entitas surat ────────────────────────────────
         var surat = new Surat
         {
             NoSurat       = request.NoSurat,
@@ -96,126 +95,88 @@ public class SuratService : ISuratService
             Status        = "Baru",
             UserId        = request.UserId,
             DitujukanKeId = request.DitujukanKeId,
-            CreatedAt     = DateTime.UtcNow,
+            NamaFile      = namaFile,   // nama asli dari pengirim
+            FilePath      = filePath,   // path relatif di disk
+            CreatedAt     = DateTime.Now,
             IsArchived    = false
         };
 
         _context.Surats.Add(surat);
         await _context.SaveChangesAsync();
 
-        // Load navigation properties untuk mapping response
         await _context.Entry(surat).Reference(s => s.User).LoadAsync();
         await _context.Entry(surat).Reference(s => s.DitujukanKe).LoadAsync();
 
         _logger.LogInformation(
-            "Surat masuk dicatat. NomorAgenda: {NomorAgenda}, NoSurat: {NoSurat}, DitujukanKe: {DitujukanKeId}",
-            nomorAgenda, request.NoSurat, request.DitujukanKeId);
+            "Surat masuk dicatat. NomorAgenda: {NomorAgenda}, File: {NamaFile}",
+            nomorAgenda, namaFile);
 
         return MapToResponse(surat);
     }
 
+    // ─────────────────────────────────────────────────────────
+    // UPLOAD PDF — ganti file yang sudah ada (kode Efrapaska)
+    // ─────────────────────────────────────────────────────────
     public async Task<UploadPdfResponse> UploadPdfAsync(int suratId, IFormFile file)
     {
-        // ── Validasi 1: Surat masuk harus ada ─────────────────────
-        var surat = await _context.Surats.FindAsync(suratId);
-        if (surat == null)
-            throw new KeyNotFoundException($"Surat dengan ID {suratId} tidak ditemukan.");
+        var surat = await _context.Surats.FindAsync(suratId)
+            ?? throw new KeyNotFoundException($"Surat dengan ID {suratId} tidak ditemukan.");
 
-        // ── Validasi 2: File tidak boleh kosong ───────────────────
-        if (file == null || file.Length == 0)
-            throw new InvalidOperationException("File tidak boleh kosong.");
-
-        // ── Validasi 3: Tipe file harus PDF ───────────────────────
-        var allowedExtensions = new[] { ".pdf" };
-        var fileExtension = Path.GetExtension(file.FileName).ToLowerInvariant();
-
-        if (!allowedExtensions.Contains(fileExtension))
-            throw new InvalidOperationException(
-                $"Tipe file tidak valid. Hanya file PDF yang diizinkan.");
-
-        // Cek MIME type juga (double validation)
-        var allowedMimeTypes = new[] { "application/pdf" };
-        if (!allowedMimeTypes.Contains(file.ContentType.ToLowerInvariant()))
-            throw new InvalidOperationException(
-                "MIME type tidak valid. Hanya application/pdf yang diizinkan.");
-
-        // ── Validasi 4: Ukuran file maksimal 10MB ─────────────────
-        const long maxFileSizeBytes = 10 * 1024 * 1024; // 10MB
-        if (file.Length > maxFileSizeBytes)
-            throw new InvalidOperationException(
-                $"Ukuran file terlalu besar. Maksimal 10MB, file kamu: " +
-                $"{file.Length / (1024 * 1024)}MB.");
-
-        // ── Simpan file ke folder uploads ─────────────────────────
-        // Generate unique filename agar tidak bentrok
-        var uniqueFileName = $"{Guid.NewGuid()}{fileExtension}";
-
-        // Folder: wwwroot/uploads/surat/2026/05/
-        var now = DateTime.Now;
-        var yearMonth = Path.Combine(now.Year.ToString(), now.Month.ToString("D2"));
-        var subFolder  = Path.Combine("wwwroot", "uploads", "surat", yearMonth);
-
-        // Buat folder kalau belum ada
-        Directory.CreateDirectory(subFolder);
-
-        // Full path di server
-        var fullPath = Path.Combine(subFolder, uniqueFileName);
-
-        // Simpan file ke disk
-        using (var stream = new FileStream(fullPath, FileMode.Create))
+        // Hapus file lama dari disk jika ada
+        if (!string.IsNullOrEmpty(surat.FilePath))
         {
-            await file.CopyToAsync(stream);
+            var oldFullPath = Path.Combine("wwwroot", surat.FilePath.Replace('/', Path.DirectorySeparatorChar));
+            if (File.Exists(oldFullPath)) File.Delete(oldFullPath);
         }
 
-        // ── Update database ────────────────────────────────────────
-        // Simpan path relatif (tanpa 'wwwroot/') agar bisa dikonstruksi jadi URL
-        var relativePath = $"uploads/surat/{yearMonth.Replace(Path.DirectorySeparatorChar, '/')}/{uniqueFileName}";
-        surat.NamaFile   = relativePath;
+        var (namaFile, filePath) = await SavePdfToDiskAsync(file);
 
+        surat.NamaFile = namaFile;
+        surat.FilePath = filePath;
         await _context.SaveChangesAsync();
 
-        // Konstruksi base URL dari request yang sedang berjalan
         var req     = _httpContextAccessor.HttpContext?.Request;
         var baseUrl = req != null ? $"{req.Scheme}://{req.Host}" : string.Empty;
 
-        _logger.LogInformation(
-            "PDF berhasil diupload. SuratId: {Id}, Path: {Path}",
-            suratId, relativePath);
+        _logger.LogInformation("PDF di-replace. SuratId: {Id}, File: {NamaFile}", suratId, namaFile);
 
         return new UploadPdfResponse
         {
             SuratId       = suratId,
-            NamaFileAsli  = file.FileName,
-            FilePath      = relativePath,
-            FileUrl       = $"{baseUrl}/{relativePath}",
+            NamaFileAsli  = namaFile,
+            FilePath      = filePath,
+            FileUrl       = $"{baseUrl}/{filePath}",
             FileSizeBytes = file.Length,
-            UploadedAt    = DateTime.UtcNow
+            UploadedAt    = DateTime.Now
         };
     }
 
+    // ─────────────────────────────────────────────────────────
+    // GET NOMOR AGENDA PREVIEW
+    // ─────────────────────────────────────────────────────────
     public async Task<NomorAgendaPreviewResponse> GetNomorAgendaPreviewAsync()
     {
-        // Hitung jumlah surat masuk bulan ini
         var now = DateTime.Now;
         var jumlahBulanIni = await _context.Surats
             .CountAsync(s => s.JenisSurat == "Masuk"
                           && s.CreatedAt.Month == now.Month
                           && s.CreatedAt.Year == now.Year);
 
-        // Generate preview nomor agenda berikutnya
         var preview = NomorAgendaHelper.Preview(jumlahBulanIni);
 
-        _logger.LogInformation(
-            "Nomor agenda preview generated: {NomorAgenda}", preview);
+        _logger.LogInformation("Nomor agenda preview generated: {NomorAgenda}", preview);
 
         return new NomorAgendaPreviewResponse
         {
-            NomorAgenda  = preview,
-            Keterangan   = "Preview - nomor final dikonfirmasi saat simpan",
-            GeneratedAt  = DateTime.UtcNow
+            NomorAgenda = preview,
+            Keterangan  = "Preview - nomor final dikonfirmasi saat simpan",
+            GeneratedAt = DateTime.Now
         };
     }
 
+    // ─────────────────────────────────────────────────────────
+    // GET SURAT BY ID
+    // ─────────────────────────────────────────────────────────
     public async Task<SuratResponse> GetSuratByIdAsync(int id)
     {
         var surat = await _context.Surats
@@ -229,84 +190,57 @@ public class SuratService : ISuratService
         return MapToResponse(surat);
     }
 
-    private SuratResponse MapToResponse(Surat s)
-    {
-        var req     = _httpContextAccessor.HttpContext?.Request;
-        var baseUrl = req != null ? $"{req.Scheme}://{req.Host}" : string.Empty;
-
-        return new SuratResponse
-        {
-            Id            = s.Id,
-            NoSurat       = s.NoSurat,
-            NomorAgenda   = s.NomorAgenda ?? "-",
-            JenisSurat    = s.JenisSurat,
-            KategoriSurat = s.KategoriSurat,
-            TanggalSurat  = s.TanggalSurat,
-            Pengirim      = s.Pengirim,
-            Penerima      = s.Penerima,
-            Perihal       = s.Perihal,
-            Status        = s.Status,
-            IsArchived    = s.IsArchived,
-            PencatatNama    = s.User?.Nama,
-            DitujukanKeId   = s.DitujukanKeId,
-            DitujukanKeNama = s.DitujukanKe?.Nama,
-            NamaFile      = s.NamaFile,
-            FileUrl       = s.NamaFile != null ? $"{baseUrl}/{s.NamaFile}" : null,
-            CreatedAt     = s.CreatedAt
-        };
-    }
-
-    // GET ALL SURAT (Dashboard/Inbox)
+    // ─────────────────────────────────────────────────────────
+    // GET ALL SURAT — Dashboard (kode Akmal, dipertahankan)
+    // ─────────────────────────────────────────────────────────
     public async Task<PaginatedResponse<SuratListResponse>> GetAllSuratAsync(SuratQueryParams query)
     {
         return await GetSuratByFilterAsync(query, jenisSurat: null);
     }
 
-    // GET SURAT MASUK
+    // ─────────────────────────────────────────────────────────
+    // GET SURAT MASUK — dengan filter & pagination (kode Akmal, dipertahankan)
+    // ─────────────────────────────────────────────────────────
     public async Task<PaginatedResponse<SuratListResponse>> GetSuratMasukAsync(SuratQueryParams query)
     {
         return await GetSuratByFilterAsync(query, jenisSurat: "Masuk");
     }
 
-    // GET SURAT KELUAR
-    public async Task<PaginatedResponse<SuratListResponse>> GetSuratKeluarAsync(SuratQueryParams query)
+    // ─────────────────────────────────────────────────────────
+    // CORE FILTER — Dipakai oleh GetAllSurat & GetSuratMasuk (kode Akmal)
+    // ─────────────────────────────────────────────────────────
+    private async Task<PaginatedResponse<SuratListResponse>> GetSuratByFilterAsync(
+        SuratQueryParams query, string? jenisSurat)
     {
-        return await GetSuratByFilterAsync(query, jenisSurat: "Keluar");
-    }
-
-    // CORE METHOD — Reusable filter logic
-    private async Task<PaginatedResponse<SuratListResponse>> GetSuratByFilterAsync(SuratQueryParams query, string? jenisSurat)
-    {
-        // ── Base query ──────────────────────────────────────────
         var q = _context.Surats
             .Include(s => s.User)
             .Include(s => s.DitujukanKe)
             .AsQueryable();
 
-        // ── Filter jenis surat ──────────────────────────────────
+        // Filter jenis surat
         if (!string.IsNullOrEmpty(jenisSurat))
             q = q.Where(s => s.JenisSurat == jenisSurat);
 
-        // ── Filter arsip ────────────────────────────────────────
+        // Filter arsip
         if (!query.IncludeArchived)
             q = q.Where(s => s.IsArchived == false);
 
-        // ── Filter status ───────────────────────────────────────
+        // Filter status
         if (!string.IsNullOrEmpty(query.Status))
             q = q.Where(s => s.Status == query.Status);
 
-        // ── Filter kategori ─────────────────────────────────────
+        // Filter kategori
         if (!string.IsNullOrEmpty(query.KategoriSurat))
             q = q.Where(s => s.KategoriSurat == query.KategoriSurat);
 
-        // ── Filter tanggal ──────────────────────────────────────
+        // Filter tanggal
         if (query.TanggalDari.HasValue)
             q = q.Where(s => s.TanggalSurat >= query.TanggalDari.Value);
 
         if (query.TanggalSampai.HasValue)
             q = q.Where(s => s.TanggalSurat <= query.TanggalSampai.Value);
 
-        // ── Search (perihal / pengirim / no_surat) ──────────────
+        // Search (perihal / pengirim / penerima / no_surat / nomor_agenda)
         if (!string.IsNullOrEmpty(query.Search))
         {
             var keyword = query.Search.ToLower();
@@ -318,28 +252,22 @@ public class SuratService : ISuratService
                 (s.NomorAgenda != null && s.NomorAgenda.ToLower().Contains(keyword)));
         }
 
-        // ── Sorting ─────────────────────────────────────────────
+        // Sorting
         var isAsc = query.SortOrder.ToLower() == "asc";
-
         q = query.SortBy.ToLower() switch
         {
-            "tanggal"       => isAsc ? q.OrderBy(s => s.TanggalSurat)
-                                    : q.OrderByDescending(s => s.TanggalSurat),
-            "nomor_agenda"  => isAsc ? q.OrderBy(s => s.NomorAgenda)
-                                    : q.OrderByDescending(s => s.NomorAgenda),
-            "pengirim"      => isAsc ? q.OrderBy(s => s.Pengirim)
-                                    : q.OrderByDescending(s => s.Pengirim),
-            "status"        => isAsc ? q.OrderBy(s => s.Status)
-                                    : q.OrderByDescending(s => s.Status),
-            _               => q.OrderByDescending(s => s.CreatedAt) // default
+            "tanggal"      => isAsc ? q.OrderBy(s => s.TanggalSurat)    : q.OrderByDescending(s => s.TanggalSurat),
+            "nomor_agenda" => isAsc ? q.OrderBy(s => s.NomorAgenda)     : q.OrderByDescending(s => s.NomorAgenda),
+            "pengirim"     => isAsc ? q.OrderBy(s => s.Pengirim)        : q.OrderByDescending(s => s.Pengirim),
+            "status"       => isAsc ? q.OrderBy(s => s.Status)          : q.OrderByDescending(s => s.Status),
+            _              => q.OrderByDescending(s => s.CreatedAt)      // default
         };
 
-        // ── Pagination ──────────────────────────────────────────
+        // Pagination
         var totalData = await q.CountAsync();
-
-        var limit = Math.Max(1, Math.Min(query.Limit, 100)); // max 100 per page
-        var page  = Math.Max(1, query.Page);
-        var skip  = (page - 1) * limit;
+        var limit     = Math.Max(1, Math.Min(query.Limit, 100));
+        var page      = Math.Max(1, query.Page);
+        var skip      = (page - 1) * limit;
 
         var data = await q
             .Skip(skip)
@@ -356,7 +284,7 @@ public class SuratService : ISuratService
                 Penerima        = s.Penerima,
                 Perihal         = s.Perihal,
                 Status          = s.Status,
-                HasLampiran     = s.NamaFile != null,
+                HasLampiran     = s.FilePath != null,   // pakai FilePath (lebih akurat)
                 DitujukanKeNama = s.DitujukanKe != null ? s.DitujukanKe.Nama : null,
                 CreatedAt       = s.CreatedAt
             })
@@ -376,6 +304,73 @@ public class SuratService : ISuratService
                 HasNextPage = page < totalPages,
                 HasPrevPage = page > 1
             }
+        };
+    }
+
+    // ─────────────────────────────────────────────────────────
+    // HELPER — Validasi & simpan PDF ke disk (kode Efrapaska)
+    // ─────────────────────────────────────────────────────────
+    private static async Task<(string namaFile, string filePath)> SavePdfToDiskAsync(IFormFile file)
+    {
+        if (file == null || file.Length == 0)
+            throw new InvalidOperationException("File PDF wajib disertakan dan tidak boleh kosong.");
+
+        var ext = Path.GetExtension(file.FileName).ToLowerInvariant();
+        if (ext != ".pdf")
+            throw new InvalidOperationException("Hanya file PDF yang diizinkan.");
+
+        if (file.ContentType.ToLowerInvariant() != "application/pdf")
+            throw new InvalidOperationException("MIME type tidak valid. Hanya application/pdf yang diizinkan.");
+
+        const long maxSize = 10L * 1024 * 1024; // 10 MB
+        if (file.Length > maxSize)
+            throw new InvalidOperationException(
+                $"Ukuran file terlalu besar. Maksimal 10MB, file kamu: {file.Length / (1024 * 1024)}MB.");
+
+        var uniqueFileName = $"{Guid.NewGuid()}{ext}";
+        var now            = DateTime.Now;
+        var yearMonth      = Path.Combine(now.Year.ToString(), now.Month.ToString("D2"));
+        var subFolder      = Path.Combine("wwwroot", "uploads", "surat", yearMonth);
+        Directory.CreateDirectory(subFolder);
+
+        var fullPath = Path.Combine(subFolder, uniqueFileName);
+        using (var stream = new FileStream(fullPath, FileMode.Create))
+            await file.CopyToAsync(stream);
+
+        var namaFile = file.FileName;   // nama asli untuk display
+        var filePath = $"uploads/surat/{yearMonth.Replace(Path.DirectorySeparatorChar, '/')}/{uniqueFileName}";
+
+        return (namaFile, filePath);
+    }
+
+    // ─────────────────────────────────────────────────────────
+    // HELPER — Map entity ke SuratResponse
+    // ─────────────────────────────────────────────────────────
+    private SuratResponse MapToResponse(Surat s)
+    {
+        var req     = _httpContextAccessor.HttpContext?.Request;
+        var baseUrl = req != null ? $"{req.Scheme}://{req.Host}" : string.Empty;
+
+        return new SuratResponse
+        {
+            Id              = s.Id,
+            NoSurat         = s.NoSurat,
+            NomorAgenda     = s.NomorAgenda ?? "-",
+            JenisSurat      = s.JenisSurat,
+            KategoriSurat   = s.KategoriSurat,
+            TanggalSurat    = s.TanggalSurat,
+            Pengirim        = s.Pengirim,
+            Penerima        = s.Penerima,
+            Perihal         = s.Perihal,
+            Status          = s.Status,
+            IsArchived      = s.IsArchived,
+            PencatatNama    = s.User?.Nama,
+            DitujukanKeId   = s.DitujukanKeId,
+            DitujukanKeNama = s.DitujukanKe?.Nama,
+            NamaFile        = s.NamaFile,   // nama asli file
+            FileUrl         = s.FilePath != null ? $"{baseUrl}/{s.FilePath}" : null,
+            HasLampiran     = s.FilePath != null,
+            CreatedAt       = s.CreatedAt
         };
     }
 }
