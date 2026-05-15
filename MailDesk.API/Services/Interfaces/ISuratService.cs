@@ -1,4 +1,5 @@
 using MailDesk.API.DTOs.Surat;
+using MailDesk.API.DTOs.Statistik;
 
 namespace MailDesk.API.Services.Interfaces;
 
@@ -18,4 +19,7 @@ public interface ISuratService
 
     /// <summary>Get surat masuk dengan filter & pagination — task Akmal.</summary>
     Task<PaginatedResponse<SuratListResponse>> GetSuratMasukAsync(SuratQueryParams query);
+
+    /// <summary>Statistik surat dan disposisi.</summary>
+    Task<StatistikResponse> GetStatistikAsync();
 }

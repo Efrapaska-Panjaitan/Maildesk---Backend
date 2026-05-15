@@ -126,7 +126,7 @@ public class DisposisiService : IDisposisiService
     // GET LIST DISPOSISI
     // ─────────────────────────────────────────────────────────
     public async Task<IEnumerable<DisposisiListResponse>> GetDisposisiListAsync(
-        int? userId)
+        int? pemberiId, int? penerimaId)
     {
         var query = _context.Disposisis
             .Include(d => d.Surat)
@@ -134,10 +134,11 @@ public class DisposisiService : IDisposisiService
             .Include(d => d.Penerima)
             .AsQueryable();
 
-        if (userId.HasValue)
-            query = query.Where(d =>
-                d.PemberiId  == userId.Value ||
-                d.PenerimaId == userId.Value);
+        if (pemberiId.HasValue)
+            query = query.Where(d => d.PemberiId == pemberiId.Value);
+
+        if (penerimaId.HasValue)
+            query = query.Where(d => d.PenerimaId == penerimaId.Value);
 
         return await query
             .OrderByDescending(d => d.CreatedAt)

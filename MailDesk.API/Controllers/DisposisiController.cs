@@ -82,20 +82,23 @@ public class DisposisiController : ControllerBase
     }
 
     // ─────────────────────────────────────────────────────────
-    // GET /api/disposisi?userId=1
+    // GET /api/disposisi?pemberiId=1&penerimaId=2
     // Daftar disposisi — Page Disposisi
     // ─────────────────────────────────────────────────────────
     /// <summary>
     /// Get daftar disposisi untuk page Disposisi.
-    /// Filter by userId untuk melihat disposisi yang diberikan/diterima user tertentu.
+    /// Filter by pemberiId (saya mendisposisi) atau penerimaId (saya menerima disposisi).
+    /// Bisa dikombinasikan: ?pemberiId=1&amp;penerimaId=2
     /// </summary>
     [HttpGet]
     [ProducesResponseType(typeof(IEnumerable<DisposisiListResponse>), StatusCodes.Status200OK)]
-    public async Task<IActionResult> GetDisposisiList([FromQuery] int? userId)
+    public async Task<IActionResult> GetDisposisiList(
+        [FromQuery] int? pemberiId,
+        [FromQuery] int? penerimaId)
     {
         try
         {
-            var result = await _disposisiService.GetDisposisiListAsync(userId);
+            var result = await _disposisiService.GetDisposisiListAsync(pemberiId, penerimaId);
             return Ok(new
             {
                 success    = true,

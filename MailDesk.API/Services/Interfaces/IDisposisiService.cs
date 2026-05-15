@@ -6,7 +6,7 @@ public interface IDisposisiService
 {
     // Task 4
     Task<DisposisiDetailResponse> CreateDisposisiAsync(CreateDisposisiRequest request);
-    Task<IEnumerable<DisposisiListResponse>> GetDisposisiListAsync(int? userId);
+    Task<IEnumerable<DisposisiListResponse>> GetDisposisiListAsync(int? pemberiId, int? penerimaId);
     Task<DisposisiDetailResponse> GetDisposisiByIdAsync(int id);
     Task<DisposisiTrackingResponse> GetTrackingBySuratIdAsync(int suratId);
 
