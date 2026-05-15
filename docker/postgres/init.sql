@@ -15,7 +15,7 @@ CREATE TABLE IF NOT EXISTS users (
     email       VARCHAR(100) NOT NULL UNIQUE,
     password    VARCHAR(255) NOT NULL,
     role_id     INT REFERENCES roles(id) ON DELETE SET NULL,
-    created_at  TIMESTAMP DEFAULT NOW()
+    created_at  TIMESTAMPTZ DEFAULT NOW()
 );
 
 -- ─────────────────────────────────────────────────
@@ -40,7 +40,7 @@ CREATE TABLE IF NOT EXISTS surat (
     is_archived     BOOLEAN DEFAULT FALSE,
     user_id         INT REFERENCES users(id) ON DELETE SET NULL,  -- TU/Sekretaris yang mencatat
     ditujukan_ke_id INT REFERENCES users(id) ON DELETE SET NULL,  -- Pimpinan tujuan disposisi
-    created_at      TIMESTAMP DEFAULT NOW()
+    created_at      TIMESTAMPTZ DEFAULT NOW()
 );
 
 -- ─────────────────────────────────────────────────
@@ -51,7 +51,7 @@ CREATE TABLE IF NOT EXISTS template_surat (
     nama_template   VARCHAR(150) NOT NULL,
     isi_template    TEXT,
     dibuat_oleh     INT REFERENCES users(id) ON DELETE SET NULL,
-    created_at      TIMESTAMP DEFAULT NOW()
+    created_at      TIMESTAMPTZ DEFAULT NOW()
 );
 
 -- ─────────────────────────────────────────────────
@@ -64,7 +64,7 @@ CREATE TABLE IF NOT EXISTS inbox (
     penerima_id         INT REFERENCES users(id) ON DELETE SET NULL,
     status              VARCHAR(20) DEFAULT 'Belum Dibaca',
     catatan_pengantar   TEXT,
-    created_at          TIMESTAMP DEFAULT NOW()
+    created_at          TIMESTAMPTZ DEFAULT NOW()
 );
 
 -- ─────────────────────────────────────────────────
@@ -81,9 +81,9 @@ CREATE TABLE IF NOT EXISTS disposisi (
     instruksi           TEXT,
     status              VARCHAR(20) NOT NULL DEFAULT 'Pending'
                         CHECK (status IN ('Pending', 'Accepted', 'Completed')),
-    waktu_diterima      TIMESTAMP,
-    completed_at        TIMESTAMP,
-    created_at          TIMESTAMP DEFAULT NOW()
+    waktu_diterima      TIMESTAMPTZ,
+    completed_at        TIMESTAMPTZ,
+    created_at          TIMESTAMPTZ DEFAULT NOW()
 );
 
 -- ─────────────────────────────────────────────────
@@ -93,7 +93,7 @@ CREATE TABLE IF NOT EXISTS disposisi_relation (
     id          SERIAL PRIMARY KEY,
     parent_id   INT NOT NULL REFERENCES disposisi(id) ON DELETE RESTRICT,
     child_id    INT NOT NULL REFERENCES disposisi(id) ON DELETE RESTRICT,
-    created_at  TIMESTAMP DEFAULT NOW(),
+    created_at  TIMESTAMPTZ DEFAULT NOW(),
     UNIQUE (child_id)   -- satu child hanya boleh punya satu parent
 );
 
@@ -110,5 +110,5 @@ CREATE TABLE IF NOT EXISTS disposisi_log (
     status_lama     VARCHAR(50),
     status_baru     VARCHAR(50),
     keterangan      TEXT,
-    created_at      TIMESTAMP NOT NULL DEFAULT NOW()
+    created_at      TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
