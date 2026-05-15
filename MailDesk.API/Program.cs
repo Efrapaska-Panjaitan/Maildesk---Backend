@@ -19,6 +19,8 @@ builder.Services.AddDbContext<AppDbContext>(options =>
 builder.Services.AddScoped<ISuratService, SuratService>();
 builder.Services.AddScoped<IUserService, UserService>();
 builder.Services.AddScoped<IDisposisiService, DisposisiService>();
+builder.Services.AddScoped<IInboxService, InboxService>();
+builder.Services.AddScoped<ITrackingService, TrackingService>();
 
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddAuthorization();
