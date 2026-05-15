@@ -205,4 +205,27 @@ public class SuratController : ControllerBase
             return StatusCode(500, new { success = false, message = "Terjadi kesalahan pada server." });
         }
     }
+
+    // ─────────────────────────────────────────────────────────
+    // GET /api/surat/statistik
+    // Statistik jumlah surat & disposisi
+    // ─────────────────────────────────────────────────────────
+    /// <summary>
+    /// Statistik jumlah surat (per jenis &amp; per status) dan jumlah disposisi (per status).
+    /// </summary>
+    [HttpGet("statistik")]
+    [ProducesResponseType(typeof(object), StatusCodes.Status200OK)]
+    public async Task<IActionResult> GetStatistik()
+    {
+        try
+        {
+            var result = await _suratService.GetStatistikAsync();
+            return Ok(new { success = true, data = result });
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error saat get statistik.");
+            return StatusCode(500, new { success = false, message = "Terjadi kesalahan pada server." });
+        }
+    }
 }
