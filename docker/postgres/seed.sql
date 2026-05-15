@@ -47,12 +47,12 @@ VALUES
     -- Disposisi pertama: Direktur Utama → Dir. Operasional (untuk surat ID 2)
     (2, 3, 4, '2026-05-02', 'Penting',
      'Mohon segera ditindaklanjuti dan laporkan hasilnya.',
-     'Accepted', '2026-05-02 07:00:00'),
+        'Accepted', TIMESTAMPTZ '2026-05-02 07:00:00+07'),
 
     -- Disposisi kedua: Dir. Operasional → Staff (chain dari disposisi ID 1)
     (2, 4, 5, '2026-05-02', 'Biasa',
      'Siapkan bahan rapat dan koordinasi tim.',
-     'Pending', '2026-05-02 10:00:00')
+        'Pending', TIMESTAMPTZ '2026-05-02 10:00:00+07')
 ON CONFLICT DO NOTHING;
 
 -- ─────────────────────────────────────────────────
@@ -60,5 +60,5 @@ ON CONFLICT DO NOTHING;
 -- ─────────────────────────────────────────────────
 INSERT INTO disposisi_relation (parent_id, child_id, created_at)
 VALUES
-    (1, 2, '2026-05-02 10:00:00')
+    (1, 2, TIMESTAMPTZ '2026-05-02 10:00:00+07')
 ON CONFLICT DO NOTHING;
