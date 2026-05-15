@@ -85,7 +85,7 @@ public class Surat
     public int? DitujukanKeId { get; set; }
 
     [Column("created_at")]
-    public DateTime CreatedAt { get; set; } = DateTime.Now;
+    public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
 
     // Navigation properties
     /// <summary>TU/Sekretaris pencatat surat.</summary>

@@ -86,7 +86,7 @@ public class DisposisiService : IDisposisiService
             SifatDisposisi   = request.SifatDisposisi,
             Instruksi        = request.Instruksi,
             Status           = "Pending",
-            CreatedAt        = DateTime.Now  // WIB
+            CreatedAt        = DateTime.UtcNow  // WIB
         };
 
         _context.Disposisis.Add(disposisi);
@@ -99,7 +99,7 @@ public class DisposisiService : IDisposisiService
             {
                 ParentId  = request.ParentDisposisiId.Value,
                 ChildId   = disposisi.Id,
-                CreatedAt = DateTime.Now  // WIB
+                CreatedAt = DateTime.UtcNow  // WIB
             });
             await _context.SaveChangesAsync();
         }
@@ -287,7 +287,7 @@ public class DisposisiService : IDisposisiService
             StatusLama  = statusLama,
             StatusBaru  = statusBaru,
             Keterangan  = keterangan,
-            CreatedAt   = DateTime.Now
+            CreatedAt   = DateTime.UtcNow
         });
         await _context.SaveChangesAsync();
     }
@@ -317,7 +317,7 @@ public class DisposisiService : IDisposisiService
 
         var statusLama = disposisi.Status;
         disposisi.Status       = "Accepted";
-        disposisi.WaktuDiterima = DateTime.Now;
+        disposisi.WaktuDiterima = DateTime.UtcNow;
         await _context.SaveChangesAsync();
 
         await AddLogAsync(
@@ -364,7 +364,7 @@ public class DisposisiService : IDisposisiService
 
         var statusLama = disposisi.Status;
         disposisi.Status      = "Completed";
-        disposisi.CompletedAt = DateTime.Now;
+        disposisi.CompletedAt = DateTime.UtcNow;
         await _context.SaveChangesAsync();
 
         await AddLogAsync(

@@ -46,7 +46,7 @@ public class SuratService : ISuratService
 
         // ── Generate nomor agenda ─────────────────────────────
         string nomorAgenda;
-        var now = DateTime.Now;
+        var now = DateTime.UtcNow;
 
         if (!string.IsNullOrEmpty(request.NomorAgendaPreview)
             && NomorAgendaHelper.IsValidFormat(request.NomorAgendaPreview))
@@ -98,7 +98,7 @@ public class SuratService : ISuratService
             DitujukanKeId = request.DitujukanKeId,
             NamaFile      = namaFile,   // nama asli dari pengirim
             FilePath      = filePath,   // path relatif di disk
-            CreatedAt     = DateTime.Now,
+            CreatedAt     = DateTime.UtcNow,
             IsArchived    = false
         };
 
@@ -148,7 +148,7 @@ public class SuratService : ISuratService
             FilePath      = filePath,
             FileUrl       = $"{baseUrl}/{filePath}",
             FileSizeBytes = file.Length,
-            UploadedAt    = DateTime.Now
+            UploadedAt    = DateTime.UtcNow
         };
     }
 
@@ -157,7 +157,7 @@ public class SuratService : ISuratService
     // ─────────────────────────────────────────────────────────
     public async Task<NomorAgendaPreviewResponse> GetNomorAgendaPreviewAsync()
     {
-        var now = DateTime.Now;
+        var now = DateTime.UtcNow;
         var jumlahBulanIni = await _context.Surats
             .CountAsync(s => s.JenisSurat == "Masuk"
                           && s.CreatedAt.Month == now.Month
@@ -171,7 +171,7 @@ public class SuratService : ISuratService
         {
             NomorAgenda = preview,
             Keterangan  = "Preview - nomor final dikonfirmasi saat simpan",
-            GeneratedAt = DateTime.Now
+            GeneratedAt = DateTime.UtcNow
         };
     }
 
@@ -329,7 +329,7 @@ public class SuratService : ISuratService
                 $"Ukuran file terlalu besar. Maksimal 10MB, file kamu: {file.Length / (1024 * 1024)}MB.");
 
         var uniqueFileName = $"{Guid.NewGuid()}{ext}";
-        var now            = DateTime.Now;
+        var now            = DateTime.UtcNow;
         var yearMonth      = Path.Combine(now.Year.ToString(), now.Month.ToString("D2"));
         var subFolder      = Path.Combine("wwwroot", "uploads", "surat", yearMonth);
         Directory.CreateDirectory(subFolder);

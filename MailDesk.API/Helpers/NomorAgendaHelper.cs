@@ -15,7 +15,7 @@ public static class NomorAgendaHelper
     public static string Generate(string jenisSurat, int urutan)
     {
         var prefix = jenisSurat == "Keluar" ? "SK" : "SM";
-        var now = DateTime.Now;
+        var now = DateTime.UtcNow;
         return $"{prefix}/{now.Year}/{now.Month:D2}/{urutan:D3}";
     }
 
