@@ -33,13 +33,13 @@ public class InboxController : ControllerBase
 
     // ─────────────────────────────────────────────────────────
     // GET /api/inbox
-    // Get inbox sesuai role: Admin/TU/Sekretaris lihat semua,
-    // Pimpinan/User hanya lihat inbox mereka
+    // Get inbox sesuai role: Admin lihat semua,
+    // selain Admin hanya lihat inbox miliknya (PenerimaId = userId)
     // ─────────────────────────────────────────────────────────
     /// <summary>
     /// Get inbox dengan filter role-based:
-    /// - Admin/TU/Sekretaris: lihat semua inbox
-    /// - Pimpinan/User: lihat hanya inbox untuk mereka (PenerimaId = User ID)
+    /// - Admin (role 1): lihat semua inbox
+    /// - Selain Admin: lihat hanya inbox untuk mereka (PenerimaId = User ID)
     /// </summary>
     [HttpGet]
     [ProducesResponseType(typeof(object), StatusCodes.Status200OK)]
@@ -49,9 +49,8 @@ public class InboxController : ControllerBase
         {
             var userId = GetUserIdFromHeader();
 
-            // Role: 1=Admin, 2=TU, 3=Sekretaris (admin roles)
-            // Role: 4=Pimpinan, 5=User (read-only roles)
-            var isAdminRole = userId <= 3;
+            // Hanya Admin (role 1) yang bisa lihat semua inbox
+            var isAdminRole = userId == 1;
 
             // Jika bukan admin, filter inbox hanya untuk user itu (PenerimaId = userId)
             if (!isAdminRole)
@@ -87,7 +86,7 @@ public class InboxController : ControllerBase
         try
         {
             var userId = GetUserIdFromHeader();
-            var isAdminRole = userId <= 3;
+            var isAdminRole = userId == 1;
 
             var result = await _inboxService.GetInboxByIdAsync(id);
 
@@ -96,7 +95,7 @@ public class InboxController : ControllerBase
             {
                 _logger.LogWarning("User {UserId} mencoba akses inbox {InboxId} yang bukan miliknya",
                     userId, id);
-                return Forbid("Anda tidak memiliki akses ke inbox ini.");
+                return StatusCode(403, new { success = false, message = "Anda tidak memiliki akses ke inbox ini." });
             }
 
             return Ok(new { success = true, data = result });
