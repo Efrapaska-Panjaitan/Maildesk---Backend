@@ -84,7 +84,7 @@ public class SuratService : ISuratService
             KategoriSurat = request.KategoriSurat,
             TanggalSurat  = request.TanggalSurat,
             Pengirim      = request.Pengirim,
-            Penerima      = request.Penerima,
+            Penerima      = string.Empty,
             Perihal       = request.Perihal,
             Status        = "Baru",
             UserId        = request.UserId,
