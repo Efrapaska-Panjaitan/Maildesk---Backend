@@ -89,10 +89,12 @@ public class InboxService : IInboxService
                 Id = i.Id,
                 SuratId = i.SuratId,
                 NomorAgenda = i.Surat != null ? i.Surat.NomorAgenda : null,
+                NoSurat = i.Surat != null ? i.Surat.NoSurat : null,
                 Pengirim = i.Surat != null ? i.Surat.Pengirim : null,
                 Perihal = i.Surat != null ? i.Surat.Perihal : null,
                 Status = i.Status,
                 CatatanPengantar = i.CatatanPengantar,
+                NamaFile = i.Surat != null ? i.Surat.NamaFile : null,
                 CreatedAt = i.CreatedAt
             })
             .ToListAsync();
@@ -143,6 +145,7 @@ public class InboxService : IInboxService
             NomorAgenda = inbox.Surat?.NomorAgenda,
             NoSurat = inbox.Surat?.NoSurat,
             Pengirim = inbox.Surat?.Pengirim,
+            PengirimName = inbox.Surat?.Pengirim,
             PenerimaName = inbox.Penerima?.Nama,
             Perihal = inbox.Surat?.Perihal,
             KategoriSurat = inbox.Surat?.KategoriSurat,
