@@ -123,24 +123,42 @@ public class DisposisiService : IDisposisiService
     }
 
     // ─────────────────────────────────────────────────────────
-    // GET LIST DISPOSISI
+    // GET ALL DISPOSISI — untuk TU / Sekretaris / Admin
     // ─────────────────────────────────────────────────────────
-    public async Task<IEnumerable<DisposisiListResponse>> GetDisposisiListAsync(
-        int? pemberiId, int? penerimaId)
+    public async Task<IEnumerable<DisposisiListResponse>> GetAllDisposisiAsync()
     {
-        var query = _context.Disposisis
+        return await _context.Disposisis
             .Include(d => d.Surat)
             .Include(d => d.Pemberi)
             .Include(d => d.Penerima)
-            .AsQueryable();
+            .OrderByDescending(d => d.CreatedAt)
+            .Select(d => new DisposisiListResponse
+            {
+                Id               = d.Id,
+                SuratId          = d.SuratId,
+                NoSurat          = d.Surat != null ? d.Surat.NoSurat : null,
+                PerihalSurat     = d.Surat != null ? d.Surat.Perihal : string.Empty,
+                NamaPemberi      = d.Pemberi != null ? d.Pemberi.Nama : string.Empty,
+                NamaPenerima     = d.Penerima != null ? d.Penerima.Nama : string.Empty,
+                TanggalDisposisi = d.TanggalDisposisi,
+                SifatDisposisi   = d.SifatDisposisi,
+                Status           = d.Status,
+                HasLampiranSurat = d.Surat != null && d.Surat.NamaFile != null,
+                CreatedAt        = d.CreatedAt
+            })
+            .ToListAsync();
+    }
 
-        if (pemberiId.HasValue)
-            query = query.Where(d => d.PemberiId == pemberiId.Value);
-
-        if (penerimaId.HasValue)
-            query = query.Where(d => d.PenerimaId == penerimaId.Value);
-
-        return await query
+    // ─────────────────────────────────────────────────────────
+    // GET DISPOSISI BY USER — terkait sbg pemberi atau penerima
+    // ─────────────────────────────────────────────────────────
+    public async Task<IEnumerable<DisposisiListResponse>> GetDisposisiByUserAsync(int userId)
+    {
+        return await _context.Disposisis
+            .Include(d => d.Surat)
+            .Include(d => d.Pemberi)
+            .Include(d => d.Penerima)
+            .Where(d => d.PemberiId == userId || d.PenerimaId == userId)
             .OrderByDescending(d => d.CreatedAt)
             .Select(d => new DisposisiListResponse
             {
