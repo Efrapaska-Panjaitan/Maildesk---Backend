@@ -44,13 +44,6 @@ public class CreateSuratRequest
     [Required(ErrorMessage = "User ID pencatat wajib diisi.")]
     public int UserId { get; set; }
 
-    /// <summary>
-    /// ID Pimpinan/user yang dituju untuk membaca dan melakukan disposisi surat ini.
-    /// Dipilih oleh TU/Sekretaris saat mencatat surat masuk.
-    /// </summary>
-    [Required(ErrorMessage = "Penerima tujuan disposisi wajib diisi.")]
-    public int DitujukanKeId { get; set; }
-
     // NomorAgenda tidak diisi manual — digenerate otomatis oleh sistem
 
     /// <summary>

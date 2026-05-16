@@ -47,13 +47,6 @@ public class AppDbContext : DbContext
             .HasForeignKey(s => s.UserId)
             .OnDelete(DeleteBehavior.SetNull);
 
-        // Relasi Surat → User (ditujukan ke — Pimpinan tujuan disposisi)
-        modelBuilder.Entity<Surat>()
-            .HasOne(s => s.DitujukanKe)
-            .WithMany()
-            .HasForeignKey(s => s.DitujukanKeId)
-            .OnDelete(DeleteBehavior.SetNull);
-        
         // Relasi DisposisiRelation → Disposisi (parent)
         modelBuilder.Entity<DisposisiRelation>()
             .HasOne(dr => dr.Parent)

@@ -194,7 +194,7 @@ public class InboxService : IInboxService
         {
             SuratId = request.SuratId,
             PengirimId = surat.UserId,
-            PenerimaId = request.PenerimaId ?? surat.DitujukanKeId,
+            PenerimaId = request.PenerimaId,
             Status = "Menunggu Tindakan",
             CatatanPengantar = request.CatatanPengantar,
             CreatedAt = DateTime.UtcNow

@@ -37,13 +37,6 @@ public class SuratService : ISuratService
             throw new InvalidOperationException(
                 $"Surat dengan nomor '{request.NoSurat}' sudah pernah dicatat.");
 
-        // ── Validasi DitujukanKe ──────────────────────────────
-        var ditujukanKeExists = await _context.Users
-            .AnyAsync(u => u.Id == request.DitujukanKeId);
-        if (!ditujukanKeExists)
-            throw new KeyNotFoundException(
-                $"User dengan ID {request.DitujukanKeId} (penerima tujuan) tidak ditemukan.");
-
         // ── Generate nomor agenda ─────────────────────────────
         string nomorAgenda;
         var now = DateTime.UtcNow;
@@ -95,7 +88,6 @@ public class SuratService : ISuratService
             Perihal       = request.Perihal,
             Status        = "Baru",
             UserId        = request.UserId,
-            DitujukanKeId = request.DitujukanKeId,
             NamaFile      = namaFile,   // nama asli dari pengirim
             FilePath      = filePath,   // path relatif di disk
             CreatedAt     = DateTime.UtcNow,
@@ -106,7 +98,6 @@ public class SuratService : ISuratService
         await _context.SaveChangesAsync();
 
         await _context.Entry(surat).Reference(s => s.User).LoadAsync();
-        await _context.Entry(surat).Reference(s => s.DitujukanKe).LoadAsync();
 
         _logger.LogInformation(
             "Surat masuk dicatat. NomorAgenda: {NomorAgenda}, File: {NamaFile}",
@@ -182,7 +173,6 @@ public class SuratService : ISuratService
     {
         var surat = await _context.Surats
             .Include(s => s.User)
-            .Include(s => s.DitujukanKe)
             .FirstOrDefaultAsync(s => s.Id == id);
 
         if (surat == null)
@@ -215,7 +205,6 @@ public class SuratService : ISuratService
     {
         var q = _context.Surats
             .Include(s => s.User)
-            .Include(s => s.DitujukanKe)
             .AsQueryable();
 
         // Filter jenis surat
@@ -286,7 +275,6 @@ public class SuratService : ISuratService
                 Perihal         = s.Perihal,
                 Status          = s.Status,
                 HasLampiran     = s.FilePath != null,   // pakai FilePath (lebih akurat)
-                DitujukanKeNama = s.DitujukanKe != null ? s.DitujukanKe.Nama : null,
                 CreatedAt       = s.CreatedAt
             })
             .ToListAsync();
@@ -366,8 +354,6 @@ public class SuratService : ISuratService
             Status          = s.Status,
             IsArchived      = s.IsArchived,
             PencatatNama    = s.User?.Nama,
-            DitujukanKeId   = s.DitujukanKeId,
-            DitujukanKeNama = s.DitujukanKe?.Nama,
             NamaFile        = s.NamaFile,   // nama asli file
             FileUrl         = s.FilePath != null ? $"{baseUrl}/{s.FilePath}" : null,
             HasLampiran     = s.FilePath != null,
