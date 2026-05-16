@@ -1,5 +1,6 @@
 using MailDesk.API.Data;
 using MailDesk.API.DTOs.Surat;
+using MailDesk.API.DTOs.Statistik;
 using MailDesk.API.Entities;
 using MailDesk.API.Helpers;
 using MailDesk.API.Services.Interfaces;
@@ -371,6 +372,56 @@ public class SuratService : ISuratService
             FileUrl         = s.FilePath != null ? $"{baseUrl}/{s.FilePath}" : null,
             HasLampiran     = s.FilePath != null,
             CreatedAt       = s.CreatedAt
+        };
+    }
+
+    // ─────────────────────────────────────────────────────────
+    // STATISTIK
+    // ─────────────────────────────────────────────────────────
+    public async Task<StatistikResponse> GetStatistikAsync()
+    {
+        var suratPerJenis = await _context.Surats
+            .GroupBy(s => s.JenisSurat)
+            .Select(g => new LabelCountItem
+            {
+                Label = g.Key,
+                Count = g.Count()
+            })
+            .ToListAsync();
+
+        var suratPerStatus = await _context.Surats
+            .GroupBy(s => s.Status)
+            .Select(g => new LabelCountItem
+            {
+                Label = g.Key,
+                Count = g.Count()
+            })
+            .ToListAsync();
+
+        var totalSurat = suratPerJenis.Sum(x => x.Count);
+
+        var disposisiPerStatus = await _context.Disposisis
+            .GroupBy(d => d.Status)
+            .Select(g => new LabelCountItem
+            {
+                Label = g.Key,
+                Count = g.Count()
+            })
+            .ToListAsync();
+
+        var totalDisposisi = disposisiPerStatus.Sum(x => x.Count);
+
+        _logger.LogInformation(
+            "Statistik: {TotalSurat} surat, {TotalDisposisi} disposisi",
+            totalSurat, totalDisposisi);
+
+        return new StatistikResponse
+        {
+            TotalSurat        = totalSurat,
+            SuratPerJenis     = suratPerJenis,
+            SuratPerStatus    = suratPerStatus,
+            TotalDisposisi    = totalDisposisi,
+            DisposisiPerStatus = disposisiPerStatus
         };
     }
 }

@@ -27,3 +27,5 @@ obj/
 appsettings.Development.json
 *.user
 *.suo
+
+AGENTS.md
