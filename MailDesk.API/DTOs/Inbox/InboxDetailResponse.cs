@@ -10,6 +10,8 @@ public class InboxDetailResponse
     public string? NomorAgenda { get; set; }
     public string? NoSurat { get; set; }
     public string? Pengirim { get; set; }
+    /// <summary>Nama perusahaan/instansi pengirim surat (dari kolom surat.Pengirim).</summary>
+    public string? PengirimName { get; set; }
     public string? PenerimaName { get; set; }
     public string? Perihal { get; set; }
     public string? KategoriSurat { get; set; }
