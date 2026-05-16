@@ -38,7 +38,7 @@ builder.Services.AddSwaggerGen(c =>
     // Definisi header X-User-Id untuk otorisasi berbasis role
     c.AddSecurityDefinition("X-User-Id", new OpenApiSecurityScheme
     {
-        Description = "Masukkan ID user: 1=Admin, 2=TU, 3=Sekretaris, 4=Pimpinan (read-only), 5=User (read-only)",
+        Description = "Masukkan ID user: 1=Admin, 2=TU, 3=Sekretaris, 4=Pimpinan, 5=User (read-only)",
         Name        = "X-User-Id",
         In          = ParameterLocation.Header,
         Type        = SecuritySchemeType.ApiKey,
@@ -125,8 +125,8 @@ app.Use(async (context, next) =>
             return;
         }
 
-        // 4. Pimpinan (4) dan User (5) hanya boleh GET (read-only)
-        var readOnlyRoles = new[] { 4, 5 };
+        // 4. Hanya User (5) yang read-only (GET); Pimpinan (4) boleh menulis
+        var readOnlyRoles = new[] { 5 };
         if (readOnlyRoles.Contains(userId) && !HttpMethods.IsGet(context.Request.Method))
         {
             context.Response.StatusCode = StatusCodes.Status403Forbidden;
