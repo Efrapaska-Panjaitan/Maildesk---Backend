@@ -5,4 +5,5 @@ namespace MailDesk.API.Services.Interfaces;
 public interface ITrackingService
 {
     Task<TrackingResponseDto> GetTrackingSuratAsync(int suratId);
+    Task<TrackingResponseDto> UpdateSuratStatusAsync(int suratId, UpdateSuratStatusRequest request);
 }

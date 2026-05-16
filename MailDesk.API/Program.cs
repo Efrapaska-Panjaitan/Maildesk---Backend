@@ -80,10 +80,13 @@ app.UseStaticFiles();
 
 // ── RBAC Middleware — validasi X-User-Id di setiap request /api ──────────
 // Role mapping: 1=Admin, 2=TU, 3=Sekretaris, 4=Pimpinan, 5=User
-// Pimpinan (4) dan User (5) hanya boleh akses GET (read-only)
+// User (5) tetap read-only, kecuali untuk PATCH disposisi yang diizinkan untuk semua user.
 app.Use(async (context, next) =>
 {
     var path = context.Request.Path.Value?.ToLower();
+    var isDisposisiPatch = path != null
+        && path.StartsWith("/api/disposisi")
+        && HttpMethods.IsPatch(context.Request.Method);
 
     if (path != null && path.StartsWith("/api"))
     {
@@ -125,15 +128,17 @@ app.Use(async (context, next) =>
             return;
         }
 
-        // 4. Hanya User (5) yang read-only (GET); Pimpinan (4) boleh menulis
+        // 4. Hanya User (5) yang read-only (GET), kecuali PATCH disposisi
         var readOnlyRoles = new[] { 5 };
-        if (readOnlyRoles.Contains(userId) && !HttpMethods.IsGet(context.Request.Method))
+        if (readOnlyRoles.Contains(userId) &&
+            !HttpMethods.IsGet(context.Request.Method) &&
+            !isDisposisiPatch)
         {
             context.Response.StatusCode = StatusCodes.Status403Forbidden;
             await context.Response.WriteAsJsonAsync(new
             {
                 success = false,
-                message = "Forbidden. Role Anda hanya diizinkan untuk membaca data (GET)."
+                message = "Forbidden. Role Anda hanya diizinkan untuk membaca data (GET), kecuali PATCH disposisi."
             });
             return;
         }

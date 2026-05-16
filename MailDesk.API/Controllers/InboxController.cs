@@ -172,5 +172,78 @@ public class InboxController : ControllerBase
             return StatusCode(500, new { success = false, message = "Terjadi kesalahan pada server." });
         }
     }
+
+    // ─────────────────────────────────────────────────────────
+    // PATCH /api/inbox/{id}/status
+    // Update status inbox
+    // ─────────────────────────────────────────────────────────
+    /// <summary>
+    /// Update status inbox. Hanya penerima atau Admin/TU/Sekretaris yang bisa mengubah.
+    /// Status yang diizinkan: "Menunggu Tindakan", "Sudah Dibaca", "Belum Dibaca", "Sudah Didisposisikan".
+    /// </summary>
+    [HttpPatch("{id}/status")]
+    [ProducesResponseType(typeof(InboxDetailResponse), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(object), StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(StatusCodes.Status403Forbidden)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    public async Task<IActionResult> UpdateInboxStatus(
+        [FromRoute] int id,
+        [FromBody] UpdateInboxStatusRequest request)
+    {
+        if (!ModelState.IsValid)
+            return BadRequest(new
+            {
+                success = false,
+                errors = ModelState.Values.SelectMany(v => v.Errors).Select(e => e.ErrorMessage)
+            });
+
+        try
+        {
+            var userId = GetUserIdFromHeader();
+            var isAdminRole = userId <= 3;
+
+            // Cek kepemilikan inbox jika bukan admin
+            if (!isAdminRole)
+            {
+                var inbox = await _inboxService.GetInboxByIdAsync(id);
+                if (inbox.PenerimaId != userId)
+                {
+                    _logger.LogWarning(
+                        "User {UserId} mencoba update status inbox {InboxId} yang bukan miliknya", userId, id);
+                    return StatusCode(403, new
+                    {
+                        success = false,
+                        message = "Anda tidak memiliki akses untuk mengubah status inbox ini."
+                    });
+                }
+            }
+
+            var result = await _inboxService.UpdateInboxStatusAsync(id, request);
+
+            _logger.LogInformation(
+                "Status inbox diperbarui - UserId: {UserId}, InboxId: {Id}, Status: {Status}",
+                userId, id, request.Status);
+
+            return Ok(new
+            {
+                success = true,
+                message = $"Status inbox berhasil diperbarui menjadi \"{request.Status}\".",
+                data = result
+            });
+        }
+        catch (ArgumentException ex)
+        {
+            return BadRequest(new { success = false, message = ex.Message });
+        }
+        catch (KeyNotFoundException ex)
+        {
+            return NotFound(new { success = false, message = ex.Message });
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error saat update status inbox ID: {Id}", id);
+            return StatusCode(500, new { success = false, message = "Terjadi kesalahan pada server." });
+        }
+    }
 }
 

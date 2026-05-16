@@ -90,4 +90,31 @@ public class TrackingService : ITrackingService
             Timeline   = daftarRiwayat
         };
     }
+
+    // ─────────────────────────────────────────────────────────
+    // UPDATE STATUS SURAT (via Tracking)
+    // ─────────────────────────────────────────────────────────
+    public async Task<TrackingResponseDto> UpdateSuratStatusAsync(int suratId, UpdateSuratStatusRequest request)
+    {
+        if (!request.IsValid())
+            throw new ArgumentException(
+                $"Status tidak valid. Nilai yang diizinkan: {UpdateSuratStatusRequest.AllowedValues}.");
+
+        var surat = await _context.Surats
+            .FirstOrDefaultAsync(s => s.Id == suratId);
+
+        if (surat == null)
+            throw new KeyNotFoundException($"Surat dengan ID {suratId} tidak ditemukan.");
+
+        var oldStatus = surat.Status;
+        surat.Status = request.Status;
+
+        await _context.SaveChangesAsync();
+
+        _logger.LogInformation(
+            "Status surat diperbarui. SuratId: {Id}, Status: {Old} -> {New}",
+            suratId, oldStatus, request.Status);
+
+        return await GetTrackingSuratAsync(suratId);
+    }
 }
