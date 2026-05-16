@@ -226,4 +226,31 @@ public class InboxService : IInboxService
 
         return results;
     }
+
+    // ─────────────────────────────────────────────────────────
+    // UPDATE STATUS INBOX
+    // ─────────────────────────────────────────────────────────
+    public async Task<InboxDetailResponse> UpdateInboxStatusAsync(int id, UpdateInboxStatusRequest request)
+    {
+        if (!request.IsValid())
+            throw new ArgumentException(
+                $"Status tidak valid. Nilai yang diizinkan: {UpdateInboxStatusRequest.AllowedValues}.");
+
+        var inbox = await _context.Inboxes
+            .FirstOrDefaultAsync(i => i.Id == id);
+
+        if (inbox == null)
+            throw new KeyNotFoundException($"Inbox dengan ID {id} tidak ditemukan.");
+
+        var oldStatus = inbox.Status;
+        inbox.Status = request.Status;
+
+        await _context.SaveChangesAsync();
+
+        _logger.LogInformation(
+            "Status inbox diperbarui. InboxId: {Id}, Status: {Old} -> {New}",
+            id, oldStatus, request.Status);
+
+        return await GetInboxByIdAsync(id);
+    }
 }
