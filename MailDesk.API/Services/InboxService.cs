@@ -161,10 +161,15 @@ public class InboxService : IInboxService
     }
 
     // ─────────────────────────────────────────────────────────
-    // CREATE INBOX FROM SURAT
+    // CREATE INBOX FROM SURAT (multi-penerima, maks 5)
     // ─────────────────────────────────────────────────────────
-    public async Task<InboxDetailResponse> CreateInboxFromSuratAsync(CreateInboxFromSuratRequest request)
+    public async Task<List<InboxDetailResponse>> CreateInboxFromSuratAsync(CreateInboxFromSuratRequest request)
     {
+        // Validasi duplikat dalam request itu sendiri
+        var distinctIds = request.PenerimaIds.Distinct().ToList();
+        if (distinctIds.Count != request.PenerimaIds.Count)
+            throw new ArgumentException("Terdapat ID penerima yang duplikat dalam request.");
+
         // Validasi surat
         var surat = await _context.Surats
             .FirstOrDefaultAsync(s => s.Id == request.SuratId);
@@ -173,46 +178,52 @@ public class InboxService : IInboxService
             throw new KeyNotFoundException(
                 $"Surat dengan ID {request.SuratId} tidak ditemukan.");
 
-        // Validasi penerima jika diberikan
-        if (request.PenerimaId.HasValue)
-        {
-            var penerima = await _context.Users
-                .AnyAsync(u => u.Id == request.PenerimaId.Value);
+        // Validasi semua penerima ada di tabel users
+        var validUserIds = await _context.Users
+            .Where(u => distinctIds.Contains(u.Id))
+            .Select(u => u.Id)
+            .ToListAsync();
 
-            if (!penerima)
-                throw new KeyNotFoundException(
-                    $"User penerima dengan ID {request.PenerimaId.Value} tidak ditemukan.");
-        }
+        var invalidIds = distinctIds.Except(validUserIds).ToList();
+        if (invalidIds.Any())
+            throw new KeyNotFoundException(
+                $"User penerima dengan ID berikut tidak ditemukan: {string.Join(", ", invalidIds)}.");
 
-        // Cek apakah surat sudah ada di inbox
-        var existingInbox = await _context.Inboxes
-            .FirstOrDefaultAsync(i => i.SuratId == request.SuratId);
+        // Cek apakah surat ini sudah pernah diteruskan ke user-user tersebut
+        var existingPenerimaIds = await _context.Inboxes
+            .Where(i => i.SuratId == request.SuratId && distinctIds.Contains(i.PenerimaId!.Value))
+            .Select(i => i.PenerimaId!.Value)
+            .ToListAsync();
 
-        if (existingInbox != null)
+        if (existingPenerimaIds.Any())
             throw new InvalidOperationException(
-                $"Surat dengan ID {request.SuratId} sudah ada di inbox.");
+                $"Surat ini sudah pernah diteruskan ke user dengan ID: {string.Join(", ", existingPenerimaIds)}.");
 
-        // Buat inbox entry baru
-        var inbox = new Inbox
+        // Buat inbox entry untuk setiap penerima
+        var inboxEntries = distinctIds.Select(penerimaId => new Inbox
         {
-            SuratId = request.SuratId,
-            PengirimId = surat.UserId,
-            PenerimaId = request.PenerimaId ?? surat.DitujukanKeId,
-            Status = "Menunggu Tindakan",
+            SuratId        = request.SuratId,
+            PengirimId     = surat.UserId,
+            PenerimaId     = penerimaId,
+            Status         = "Menunggu Tindakan",
             CatatanPengantar = request.CatatanPengantar,
-            CreatedAt = DateTime.UtcNow
-        };
+            CreatedAt      = DateTime.UtcNow
+        }).ToList();
 
-        _context.Inboxes.Add(inbox);
+        _context.Inboxes.AddRange(inboxEntries);
         await _context.SaveChangesAsync();
 
-        await _context.Entry(inbox).Reference(i => i.Surat).LoadAsync();
-        await _context.Entry(inbox).Reference(i => i.Penerima).LoadAsync();
-
         _logger.LogInformation(
-            "Inbox dibuat dari surat. InboxId: {InboxId}, SuratId: {SuratId}",
-            inbox.Id, request.SuratId);
+            "Inbox dibuat dari surat. SuratId: {SuratId}, Penerima: [{PenerimaIds}], InboxIds: [{InboxIds}]",
+            request.SuratId,
+            string.Join(", ", distinctIds),
+            string.Join(", ", inboxEntries.Select(i => i.Id)));
 
-        return await GetInboxByIdAsync(inbox.Id);
+        // Ambil detail setiap inbox yang baru dibuat
+        var results = new List<InboxDetailResponse>();
+        foreach (var inbox in inboxEntries)
+            results.Add(await GetInboxByIdAsync(inbox.Id));
+
+        return results;
     }
 }
