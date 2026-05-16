@@ -8,9 +8,7 @@ public class UpdateSuratStatusRequest
     {
         "Baru",
         "Diproses",
-        "Selesai",
-        "Ditolak",
-        "Diarsipkan"
+        "Selesai"
     };
 
     [Required(ErrorMessage = "Status wajib diisi.")]
@@ -23,8 +21,6 @@ public class UpdateSuratStatusRequest
         {
             "Baru",
             "Diproses",
-            "Selesai",
-            "Ditolak",
-            "Diarsipkan"
+            "Selesai"
         }.Select(s => $"\"{s}\""));
 }

@@ -64,7 +64,7 @@ public class TrackingController : ControllerBase
     // ─────────────────────────────────────────────────────────
     /// <summary>
     /// Update status surat. Hanya Admin, TU, dan Sekretaris yang bisa mengubah.
-    /// Status yang diizinkan: "Baru", "Diproses", "Selesai", "Ditolak", "Diarsipkan".
+    /// Status yang diizinkan: "Baru", "Diproses", "Selesai".
     /// </summary>
     [HttpPatch("{id}/status")]
     [ProducesResponseType(typeof(object), StatusCodes.Status200OK)]
