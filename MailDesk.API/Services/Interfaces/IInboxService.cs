@@ -7,5 +7,5 @@ public interface IInboxService
 {
     Task<PaginatedResponse<InboxListResponse>> GetAllInboxAsync(InboxQueryParams query);
     Task<InboxDetailResponse> GetInboxByIdAsync(int id);
-    Task<InboxDetailResponse> CreateInboxFromSuratAsync(CreateInboxFromSuratRequest request);
+    Task<List<InboxDetailResponse>> CreateInboxFromSuratAsync(CreateInboxFromSuratRequest request);
 }

@@ -113,15 +113,16 @@ public class InboxController : ControllerBase
     }
 
     // ─────────────────────────────────────────────────────────
+    // ─────────────────────────────────────────────────────────
     // POST /api/inbox
-    // Buat inbox dari surat (hanya admin roles: 1, 2, 3)
+    // Buat inbox dari surat untuk banyak penerima (maks 5)
     // ─────────────────────────────────────────────────────────
     /// <summary>
-    /// Buat inbox baru dari surat.
+    /// Teruskan surat ke beberapa penerima sekaligus (minimal 1, maksimal 5).
     /// Hanya Admin, TU, dan Sekretaris yang bisa membuat.
     /// </summary>
     [HttpPost]
-    [ProducesResponseType(typeof(InboxDetailResponse), StatusCodes.Status201Created)]
+    [ProducesResponseType(typeof(IEnumerable<InboxDetailResponse>), StatusCodes.Status201Created)]
     [ProducesResponseType(typeof(object), StatusCodes.Status400BadRequest)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
     public async Task<IActionResult> CreateInbox([FromBody] CreateInboxFromSuratRequest request)
@@ -135,22 +136,27 @@ public class InboxController : ControllerBase
 
         try
         {
-            var result = await _inboxService.CreateInboxFromSuratAsync(request);
+            var results = await _inboxService.CreateInboxFromSuratAsync(request);
 
             var userId = GetUserIdFromHeader();
             _logger.LogInformation(
-                "Inbox berhasil dibuat - UserId: {UserId}, SuratId: {SuratId}, InboxId: {InboxId}",
-                userId, request.SuratId, result.Id);
+                "Inbox berhasil dibuat - UserId: {UserId}, SuratId: {SuratId}, InboxIds: [{InboxIds}]",
+                userId, request.SuratId, string.Join(", ", results.Select(r => r.Id)));
 
             return CreatedAtAction(
                 actionName: nameof(GetInboxById),
-                routeValues: new { id = result.Id },
+                routeValues: new { id = results.First().Id },
                 value: new
                 {
                     success = true,
-                    message = "Inbox berhasil dibuat dari surat.",
-                    data = result
+                    message = $"Surat berhasil diteruskan ke {results.Count} penerima.",
+                    totalCreated = results.Count,
+                    data = results
                 });
+        }
+        catch (ArgumentException ex)
+        {
+            return BadRequest(new { success = false, message = ex.Message });
         }
         catch (KeyNotFoundException ex)
         {
