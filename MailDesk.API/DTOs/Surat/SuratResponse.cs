@@ -17,12 +17,6 @@ public class SuratResponse
     /// <summary>Nama TU/Sekretaris yang mencatat surat.</summary>
     public string? PencatatNama { get; set; }
 
-    /// <summary>ID Pimpinan yang dituju TU/Sekretaris untuk disposisi.</summary>
-    public int? DitujukanKeId { get; set; }
-
-    /// <summary>Nama Pimpinan yang dituju TU/Sekretaris untuk disposisi.</summary>
-    public string? DitujukanKeNama { get; set; }
-
     /// <summary>Nama asli file PDF dari pengirim (untuk display di UI).</summary>
     public string? NamaFile { get; set; }
 

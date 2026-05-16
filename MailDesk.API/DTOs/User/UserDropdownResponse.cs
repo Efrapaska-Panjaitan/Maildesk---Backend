@@ -6,7 +6,6 @@ namespace MailDesk.API.DTOs.User;
 /// </summary>
 public class UserDropdownResponse
 {
-    /// <summary>ID user — dikirim sebagai nilai DitujukanKeId saat POST /api/surat</summary>
     public int Id { get; set; }
 
     /// <summary>Nama lengkap user — ditampilkan sebagai label di dropdown</summary>

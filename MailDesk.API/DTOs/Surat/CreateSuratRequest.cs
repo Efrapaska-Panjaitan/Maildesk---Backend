@@ -24,9 +24,6 @@ public class CreateSuratRequest
     [MaxLength(150, ErrorMessage = "Pengirim maksimal 150 karakter.")]
     public string Pengirim { get; set; } = string.Empty;
 
-    [Required(ErrorMessage = "Penerima wajib diisi.")]
-    [MaxLength(150)]
-    public string Penerima { get; set; } = string.Empty;
 
     /// <summary>
     /// Perihal / subject surat.

@@ -82,23 +82,30 @@ public class DisposisiController : ControllerBase
     }
 
     // ─────────────────────────────────────────────────────────
-    // GET /api/disposisi?pemberiId=1&penerimaId=2
-    // Daftar disposisi — Page Disposisi
+    // GET /api/disposisi?userId=1
+    // Daftar disposisi terkait user (sbg pemberi atau penerima)
     // ─────────────────────────────────────────────────────────
     /// <summary>
-    /// Get daftar disposisi untuk page Disposisi.
-    /// Filter by pemberiId (saya mendisposisi) atau penerimaId (saya menerima disposisi).
-    /// Bisa dikombinasikan: ?pemberiId=1&amp;penerimaId=2
+    /// Get daftar disposisi yang berhubungan dengan user tertentu
+    /// (baik sebagai pemberi disposisi atau penerima disposisi).
+    /// Digunakan oleh semua role.
     /// </summary>
     [HttpGet]
     [ProducesResponseType(typeof(IEnumerable<DisposisiListResponse>), StatusCodes.Status200OK)]
-    public async Task<IActionResult> GetDisposisiList(
-        [FromQuery] int? pemberiId,
-        [FromQuery] int? penerimaId)
+    [ProducesResponseType(StatusCodes.Status400BadRequest)]
+    public async Task<IActionResult> GetDisposisiByUser(
+        [FromQuery] int? userId)
     {
+        if (!userId.HasValue)
+            return BadRequest(new
+            {
+                success = false,
+                message = "Parameter 'userId' wajib diisi."
+            });
+
         try
         {
-            var result = await _disposisiService.GetDisposisiListAsync(pemberiId, penerimaId);
+            var result = await _disposisiService.GetDisposisiByUserAsync(userId.Value);
             return Ok(new
             {
                 success    = true,
@@ -108,7 +115,49 @@ public class DisposisiController : ControllerBase
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Error saat get list disposisi.");
+            _logger.LogError(ex, "Error saat get disposisi by user.");
+            return StatusCode(500, new
+            {
+                success = false,
+                message = "Terjadi kesalahan pada server."
+            });
+        }
+    }
+
+    // ─────────────────────────────────────────────────────────
+    // GET /api/disposisi/semua
+    // Seluruh disposisi — khusus TU / Sekretaris / Admin
+    // ─────────────────────────────────────────────────────────
+    /// <summary>
+    /// Get seluruh data disposisi tanpa filter.
+    /// Hanya dapat diakses oleh Admin (1), TU (2), dan Sekretaris (3).
+    /// </summary>
+    [HttpGet("semua")]
+    [ProducesResponseType(typeof(IEnumerable<DisposisiListResponse>), StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status403Forbidden)]
+    public async Task<IActionResult> GetAllDisposisi()
+    {
+        try
+        {
+            var userIdStr = HttpContext.Request.Headers["X-User-Id"].FirstOrDefault();
+            if (int.TryParse(userIdStr, out var userId) && userId > 3)
+                return StatusCode(403, new
+                {
+                    success = false,
+                    message = "Forbidden. Hanya Admin (1), TU (2), dan Sekretaris (3) yang dapat mengakses seluruh disposisi."
+                });
+
+            var result = await _disposisiService.GetAllDisposisiAsync();
+            return Ok(new
+            {
+                success    = true,
+                totalData  = result.Count(),
+                data       = result
+            });
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error saat get semua disposisi.");
             return StatusCode(500, new
             {
                 success = false,
