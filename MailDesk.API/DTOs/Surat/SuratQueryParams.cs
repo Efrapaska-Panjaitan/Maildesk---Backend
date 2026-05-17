@@ -4,7 +4,7 @@ public class SuratQueryParams
 {
     // ── Pagination ────────────────────────────────────────────
     public int Page { get; set; } = 1;
-    public int Limit { get; set; } = 10;
+    public int Limit { get; set; } = 50;
 
     // ── Sorting ───────────────────────────────────────────────
     // Nilai: tanggal | nomor_agenda | pengirim | status
