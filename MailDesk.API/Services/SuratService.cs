@@ -255,7 +255,7 @@ public class SuratService : ISuratService
 
         // Pagination
         var totalData = await q.CountAsync();
-        var limit     = Math.Max(1, Math.Min(query.Limit, 100));
+        var limit     = Math.Max(1, Math.Min(query.Limit, 50));
         var page      = Math.Max(1, query.Page);
         var skip      = (page - 1) * limit;
 
