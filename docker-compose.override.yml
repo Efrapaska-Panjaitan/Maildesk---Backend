@@ -11,6 +11,6 @@ services:
   api:
     # Hot-reload saat development (mount source code)
     environment:
-      ASPNETCORE_ENVIRONMENT: Development
+      ASPNETCORE_ENVIRONMENT: Production
     #volumes:
      # - ./MailDesk.API:/app/src       # opsional, untuk dev workflow
